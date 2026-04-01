@@ -1,16 +1,81 @@
-# template-repository
+---
+title: LangGraph Fabric Data Agent Sample
+description: Minimal Python sample showing a LangGraph agent calling a Fabric Data Agent through MCP with local and hosted surfaces
+---
 
-![architecture](./.img/architecture.png)
+## Overview
 
-## Disclaimer
+This repository demonstrates a LangGraph-based AI agent that calls a Fabric Data Agent via MCP.
 
-**THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.**
+The sample includes two interaction surfaces:
+
+- Terminal console with streaming responses.
+- FastAPI streaming endpoint that can be reused by hosted adapters.
+
+The hosted path is wired for Teams and Copilot Chat style usage through the M365 Agents SDK patterns.
+
+## Architecture
+
+- [src/langgraph_fabric_data_agent/config.py](src/langgraph_fabric_data_agent/config.py): centralized environment settings via pydantic-settings.
+- [src/langgraph_fabric_data_agent/logging_setup.py](src/langgraph_fabric_data_agent/logging_setup.py): structured logs with correlation context.
+- [src/langgraph_fabric_data_agent/auth.py](src/langgraph_fabric_data_agent/auth.py): local and hosted token strategies for Fabric.
+- [src/langgraph_fabric_data_agent/fabric_mcp_client.py](src/langgraph_fabric_data_agent/fabric_mcp_client.py): strict JSON-RPC MCP client wrapper.
+- [src/langgraph_fabric_data_agent/tools.py](src/langgraph_fabric_data_agent/tools.py): LangGraph tool integration over MCP.
+- [src/langgraph_fabric_data_agent/graph.py](src/langgraph_fabric_data_agent/graph.py): graph definition and tool routing.
+- [src/langgraph_fabric_data_agent/orchestrator.py](src/langgraph_fabric_data_agent/orchestrator.py): shared run and stream orchestration.
+- [src/langgraph_fabric_data_agent/api.py](src/langgraph_fabric_data_agent/api.py): FastAPI surface.
+- [src/langgraph_fabric_data_agent/console.py](src/langgraph_fabric_data_agent/console.py): terminal surface.
+- [src/langgraph_fabric_data_agent/hosted.py](src/langgraph_fabric_data_agent/hosted.py): hosted M365 adapter bridge.
 
 ## Prerequisites
 
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
-- Azure subscription & resource group
+- Python 3.12
+- uv
+- Access to:
+- Azure OpenAI / Foundry deployment (GPT-5.4)
+- Fabric Data Agent MCP endpoint
+- Bot Service credentials for hosted mode
 
-## Deployment
+## Setup
 
-## Links
+1. Copy [.env.example](.env.example) to `.env` and fill your values.
+2. Install dependencies:
+
+```bash
+uv sync --extra dev
+```
+
+## Run
+
+API surface:
+
+```bash
+uv run python -m langgraph_fabric_data_agent.main_api
+```
+
+Console surface:
+
+```bash
+uv run python -m langgraph_fabric_data_agent.main_console
+```
+
+Hosted adapter initialization:
+
+```bash
+uv run python -m langgraph_fabric_data_agent.main_hosted
+```
+
+## Validate
+
+```bash
+uv run ruff check .
+uv run pytest tests/unit
+uv run pytest tests/integration
+```
+
+## Notes
+
+- FastAPI endpoints are intentionally unauthenticated for this demo.
+- Fabric tool calls always require user authentication.
+- Local mode uses DefaultAzureCredential with interactive fallback.
+- Hosted mode expects Bot Service user tokens.
