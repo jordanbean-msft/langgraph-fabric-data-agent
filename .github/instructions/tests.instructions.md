@@ -1,6 +1,6 @@
 ---
 description: Test standards for this repository
-applyTo: "tests/**/*.py"
+applyTo: "packages/**/tests/**/*.py"
 ---
 
 ## Test Standards

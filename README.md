@@ -1,6 +1,6 @@
 ---
 title: LangGraph Fabric Data Agent Sample
-description: Minimal Python sample showing a LangGraph agent calling a Fabric Data Agent through MCP with local and hosted surfaces
+description: Python monorepo sample showing a LangGraph agent calling a Fabric Data Agent through MCP, structured as independent packages for core logic and each client interface
 ms.date: 2026-04-01
 ---
 
@@ -8,27 +8,46 @@ ms.date: 2026-04-01
 
 This repository demonstrates a LangGraph-based AI agent that calls a Fabric Data Agent via MCP.
 
-The sample includes two interaction surfaces:
+The sample is organized as a **uv workspace** with four independent Python packages:
 
-- Terminal console with streaming responses.
-- FastAPI streaming endpoint that can be reused by hosted adapters.
+| Package | Description |
+| --- | --- |
+| [`langgraph-fabric-core`](packages/langgraph-fabric-core/) | Interface-agnostic: graph, orchestrator, Fabric MCP client, auth, LLM factory |
+| [`langgraph-fabric-api`](packages/langgraph-fabric-api/) | FastAPI streaming endpoint |
+| [`langgraph-fabric-console`](packages/langgraph-fabric-console/) | Interactive terminal with streamed responses |
+| [`langgraph-fabric-m365`](packages/langgraph-fabric-m365/) | Teams / Copilot Chat via M365 Agents SDK |
 
-The hosted path is wired for Teams and Copilot Chat style usage through the M365 Agents SDK patterns.
+`langgraph-fabric-core` has **no** dependency on FastAPI, aiohttp, or the M365 Agents SDK. Each interface package depends only on core.
 
 ## Architecture
 
-- [src/langgraph_fabric_data_agent/core/config.py](src/langgraph_fabric_data_agent/core/config.py): centralized environment settings via pydantic-settings.
-- [src/langgraph_fabric_data_agent/core/logging.py](src/langgraph_fabric_data_agent/core/logging.py): structured logs with correlation context.
-- [src/langgraph_fabric_data_agent/fabric/auth.py](src/langgraph_fabric_data_agent/fabric/auth.py): local and hosted token strategies for Fabric.
-- [src/langgraph_fabric_data_agent/fabric/mcp_client.py](src/langgraph_fabric_data_agent/fabric/mcp_client.py): strict JSON-RPC MCP client wrapper.
-- [src/langgraph_fabric_data_agent/fabric/tools.py](src/langgraph_fabric_data_agent/fabric/tools.py): LangGraph tool integration over MCP.
-- [src/langgraph_fabric_data_agent/graph/workflow.py](src/langgraph_fabric_data_agent/graph/workflow.py): graph definition and tool routing.
-- [src/langgraph_fabric_data_agent/graph/orchestrator.py](src/langgraph_fabric_data_agent/graph/orchestrator.py): shared run and stream orchestration.
-- [src/langgraph_fabric_data_agent/api/app.py](src/langgraph_fabric_data_agent/api/app.py): FastAPI surface.
-- [src/langgraph_fabric_data_agent/cli/console.py](src/langgraph_fabric_data_agent/cli/console.py): terminal surface.
-- [src/langgraph_fabric_data_agent/hosted/app.py](src/langgraph_fabric_data_agent/hosted/app.py): hosted M365 adapter bridge and route wiring.
-- [src/langgraph_fabric_data_agent/hosted/oauth.py](src/langgraph_fabric_data_agent/hosted/oauth.py): hosted OAuth card flow, magic code handling, and hosted token resolution.
-- [src/langgraph_fabric_data_agent/hosted/runtime.py](src/langgraph_fabric_data_agent/hosted/runtime.py): hosted runtime environment and SDK configuration builders.
+### langgraph-fabric-core
+
+- [`core/config.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/core/config.py): centralized environment settings via pydantic-settings.
+- [`core/logging.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/core/logging.py): structured logs with correlation context.
+- [`fabric/auth.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/auth.py): local and hosted token strategies for Fabric.
+- [`fabric/mcp_client.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/mcp_client.py): strict JSON-RPC MCP client wrapper.
+- [`fabric/tools.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/tools.py): LangGraph tool integration over MCP.
+- [`graph/workflow.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/graph/workflow.py): graph definition and tool routing.
+- [`graph/orchestrator.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/graph/orchestrator.py): shared run and stream orchestration.
+- [`llm/factory.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/llm/factory.py): Azure OpenAI / Foundry chat model factory.
+
+### langgraph-fabric-api
+
+- [`app.py`](packages/langgraph-fabric-api/src/langgraph_fabric_api/app.py): FastAPI surface with `/health` and `/chat/stream`.
+- [`main.py`](packages/langgraph-fabric-api/src/langgraph_fabric_api/main.py): API entrypoint (`langgraph-fabric-api` script).
+
+### langgraph-fabric-console
+
+- [`console.py`](packages/langgraph-fabric-console/src/langgraph_fabric_console/console.py): interactive terminal surface with streaming.
+- [`main.py`](packages/langgraph-fabric-console/src/langgraph_fabric_console/main.py): console entrypoint (`langgraph-fabric-console` script).
+
+### langgraph-fabric-m365
+
+- [`app.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/app.py): hosted M365 adapter bridge and route wiring.
+- [`oauth.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py): hosted OAuth card flow, magic code handling, and hosted token resolution.
+- [`runtime.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/runtime.py): hosted runtime environment and SDK configuration builders.
+- [`main.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/main.py): M365 adapter entrypoint (`langgraph-fabric-m365` script).
 
 ## Prerequisites
 
@@ -130,16 +149,16 @@ Copy the `password` value from the output and set it as `MICROSOFT_APP_PASSWORD`
 ## Setup
 
 1. Copy [.env.example](.env.example) to `.env` and fill your values.
-2. Install dependencies:
+2. Install all workspace packages and dev dependencies:
 
 ```bash
-uv sync --extra dev
+uv sync --all-packages --extra dev
 ```
 
 3. Fill the Azure OpenAI and Fabric MCP values in `.env`.
 4. For hosted mode, also set `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_TENANT_ID`, `FABRIC_OAUTH_CONNECTION_NAME`, and the `CONNECTIONS__SERVICE_CONNECTION__*` values from the app registration section above.
 
-The hosted runtime reads these settings in [src/langgraph_fabric_data_agent/core/config.py](src/langgraph_fabric_data_agent/core/config.py) and passes them to the Microsoft Agents SDK from [src/langgraph_fabric_data_agent/hosted/runtime.py](src/langgraph_fabric_data_agent/hosted/runtime.py).
+The hosted runtime reads these settings in [`langgraph_fabric_core/core/config.py`](packages/langgraph-fabric-core/src/langgraph_fabric_core/core/config.py) and passes them to the Microsoft Agents SDK via [`langgraph_fabric_m365/runtime.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/runtime.py).
 
 ## Azure Bot Service
 
@@ -214,7 +233,7 @@ az bot create \
 Start the hosted adapter:
 
 ```bash
-uv run python -m langgraph_fabric_data_agent.main_hosted
+uv run langgraph-fabric-m365
 ```
 
 Expose port `8000` through your preferred tunnel and then update the bot endpoint:
@@ -387,19 +406,19 @@ For hosted Microsoft 365 testing with a dev tunnel:
 API surface:
 
 ```bash
-uv run python -m langgraph_fabric_data_agent.main_api
+uv run langgraph-fabric-api
 ```
 
 Console surface:
 
 ```bash
-uv run python -m langgraph_fabric_data_agent.main_console
+uv run langgraph-fabric-console
 ```
 
 Hosted adapter initialization:
 
 ```bash
-uv run python -m langgraph_fabric_data_agent.main_hosted
+uv run langgraph-fabric-m365
 ```
 
 ## Validate

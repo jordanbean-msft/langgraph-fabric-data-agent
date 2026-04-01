@@ -4,7 +4,7 @@
     {
       "label": "sync-venv",
       "type": "shell",
-      "command": "uv sync --extra dev"
+      "command": "uv sync --all-packages --extra dev"
     },
     {
       "label": "lint",
@@ -12,14 +12,24 @@
       "command": "uv run ruff check ."
     },
     {
-      "label": "test-unit",
+      "label": "test-core",
       "type": "shell",
-      "command": "uv run pytest tests/unit -v"
+      "command": "uv run pytest packages/langgraph-fabric-core/tests -v"
     },
     {
-      "label": "test-integration",
+      "label": "test-api",
       "type": "shell",
-      "command": "uv run pytest tests/integration -v"
+      "command": "uv run pytest packages/langgraph-fabric-api/tests -v"
+    },
+    {
+      "label": "test-console",
+      "type": "shell",
+      "command": "uv run pytest packages/langgraph-fabric-console/tests -v"
+    },
+    {
+      "label": "test-m365",
+      "type": "shell",
+      "command": "uv run pytest packages/langgraph-fabric-m365/tests -v"
     },
     {
       "label": "test-all",
@@ -29,23 +39,104 @@
     {
       "label": "run-api",
       "type": "shell",
-      "command": "uv run python -m langgraph_fabric_data_agent.main_api",
+      "command": "uv run langgraph-fabric-api",
       "isBackground": true
     },
     {
       "label": "run-console",
       "type": "shell",
-      "command": "uv run python -m langgraph_fabric_data_agent.main_console"
+      "command": "uv run langgraph-fabric-console"
     },
     {
       "label": "run-hosted",
       "type": "shell",
-      "command": "uv run python -m langgraph_fabric_data_agent.main_hosted",
+      "command": "uv run langgraph-fabric-m365",
       "isBackground": true,
       "presentation": {
         "panel": "new"
       }
     },
+    {
+      "label": "devtunnel-login",
+      "type": "shell",
+      "command": "devtunnel user login"
+    },
+    {
+      "label": "devtunnel-create",
+      "type": "shell",
+      "command": "devtunnel create ${input:devTunnelId} --allow-anonymous --expiration ${input:devTunnelExpiration} --description \"langgraph-fabric-data-agent hosted adapter\" --host-header unchanged"
+    },
+    {
+      "label": "devtunnel-show",
+      "type": "shell",
+      "command": "devtunnel show ${input:devTunnelId}"
+    },
+    {
+      "label": "devtunnel-port-configure",
+      "type": "shell",
+      "command": "devtunnel port delete ${input:devTunnelId} -p ${input:hostedPort} > /dev/null 2>&1 || true; devtunnel port create ${input:devTunnelId} -p ${input:hostedPort} --protocol http --host-header unchanged",
+      "presentation": {
+        "panel": "new"
+      }
+    },
+    {
+      "label": "devtunnel-host",
+      "type": "shell",
+      "command": "devtunnel host ${input:devTunnelId}",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new"
+      }
+    },
+    {
+      "label": "run-hosted-and-devtunnel-host",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "devtunnel-host",
+        "run-hosted"
+      ]
+    },
+    {
+      "label": "run-hosted-with-devtunnel",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "devtunnel-port-configure",
+        "run-hosted-and-devtunnel-host"
+      ]
+    },
+    {
+      "label": "build-m365-app-package",
+      "type": "shell",
+      "command": "mkdir -p appPackage/build && rm -f appPackage/build/langgraph-fabric-data-agent-m365.zip && zip -j appPackage/build/langgraph-fabric-data-agent-m365.zip appPackage/manifest.json appPackage/color.png appPackage/outline.png"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "devTunnelId",
+      "type": "promptString",
+      "description": "Dev Tunnel ID to reuse for the M365 Agents SDK endpoint",
+      "default": "langgraph-fabric-data-agent-m365"
+    },
+    {
+      "id": "hostedPort",
+      "type": "promptString",
+      "description": "Local port exposed by the hosted adapter",
+      "default": "8000"
+    },
+    {
+      "id": "devTunnelExpiration",
+      "type": "pickString",
+      "description": "How long the dev tunnel should stay alive",
+      "options": [
+        "4h",
+        "1d",
+        "7d"
+      ],
+      "default": "7d"
+    }
+  ]
+}
     {
       "label": "devtunnel-login",
       "type": "shell",
