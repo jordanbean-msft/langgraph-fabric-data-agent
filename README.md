@@ -25,7 +25,9 @@ The hosted path is wired for Teams and Copilot Chat style usage through the M365
 - [src/langgraph_fabric_data_agent/graph/orchestrator.py](src/langgraph_fabric_data_agent/graph/orchestrator.py): shared run and stream orchestration.
 - [src/langgraph_fabric_data_agent/api/app.py](src/langgraph_fabric_data_agent/api/app.py): FastAPI surface.
 - [src/langgraph_fabric_data_agent/cli/console.py](src/langgraph_fabric_data_agent/cli/console.py): terminal surface.
-- [src/langgraph_fabric_data_agent/hosted/app.py](src/langgraph_fabric_data_agent/hosted/app.py): hosted M365 adapter bridge.
+- [src/langgraph_fabric_data_agent/hosted/app.py](src/langgraph_fabric_data_agent/hosted/app.py): hosted M365 adapter bridge and route wiring.
+- [src/langgraph_fabric_data_agent/hosted/oauth.py](src/langgraph_fabric_data_agent/hosted/oauth.py): hosted OAuth card flow, magic code handling, and hosted token resolution.
+- [src/langgraph_fabric_data_agent/hosted/runtime.py](src/langgraph_fabric_data_agent/hosted/runtime.py): hosted runtime environment and SDK configuration builders.
 
 ## Prerequisites
 
@@ -79,4 +81,7 @@ uv run pytest tests/integration
 - Fabric tool calls always require user authentication.
 - Local mode uses DefaultAzureCredential with interactive fallback.
 - Hosted mode expects Bot Service user tokens.
+- Hosted OAuth behavior sends an Adaptive Card sign-in prompt, disables the sign-in action after flow initiation, and supports pasting OAuth magic codes back in chat.
+- Hosted runtime state access uses helper functions in [src/langgraph_fabric_data_agent/hosted/oauth.py](src/langgraph_fabric_data_agent/hosted/oauth.py) instead of direct TurnState get_value and set_value calls for SDK compatibility.
 - Logging supports a base `LOG_LEVEL` plus optional `LOG_LEVEL_OVERRIDE` values such as `langgraph_fabric_data_agent.graph:DEBUG,azure.core:WARNING`.
+- DEBUG logs can include large configuration payloads from dependencies. Redact secrets before sharing logs outside your machine.
