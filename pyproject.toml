@@ -10,7 +10,7 @@ dependencies = [
   "httpx==0.28.1",
   "langchain-core==0.3.78",
   "langchain-openai==0.3.35",
-  "langgraph==0.6.8",
+  "langgraph==1.0.10rc1",
   "mcp==1.13.1",
   "microsoft-agents-activity==0.8.0",
   "microsoft-agents-authentication-msal==0.8.0",
