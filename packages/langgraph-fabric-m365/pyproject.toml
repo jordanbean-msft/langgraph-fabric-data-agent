@@ -1,0 +1,23 @@
+[project]
+name = "langgraph-fabric-m365"
+version = "0.1.0"
+description = "M365 Agents SDK (Teams/Copilot Chat) interface for the LangGraph Fabric Data Agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "langgraph-fabric-core",
+  "microsoft-agents-activity==0.8.0",
+  "microsoft-agents-authentication-msal==0.8.0",
+  "microsoft-agents-hosting-aiohttp==0.8.0",
+  "microsoft-agents-hosting-core==0.8.0",
+]
+
+[project.scripts]
+langgraph-fabric-m365 = "langgraph_fabric_m365.main:main"
+
+[tool.uv.sources]
+langgraph-fabric-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"

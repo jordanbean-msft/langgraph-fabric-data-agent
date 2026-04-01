@@ -1,0 +1,19 @@
+[project]
+name = "langgraph-fabric-console"
+version = "0.1.0"
+description = "Interactive console interface for the LangGraph Fabric Data Agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "langgraph-fabric-core",
+]
+
+[project.scripts]
+langgraph-fabric-console = "langgraph_fabric_console.main:main"
+
+[tool.uv.sources]
+langgraph-fabric-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"

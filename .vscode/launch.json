@@ -5,7 +5,7 @@
       "name": "Console: interactive chat",
       "type": "debugpy",
       "request": "launch",
-      "module": "langgraph_fabric_data_agent.main_console",
+      "module": "langgraph_fabric_console.main",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
@@ -15,7 +15,7 @@
       "name": "API: FastAPI (uvicorn)",
       "type": "debugpy",
       "request": "launch",
-      "module": "langgraph_fabric_data_agent.main_api",
+      "module": "langgraph_fabric_api.main",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
@@ -25,19 +25,19 @@
       "name": "Hosted: M365 adapter",
       "type": "debugpy",
       "request": "launch",
-      "module": "langgraph_fabric_data_agent.main_hosted",
+      "module": "langgraph_fabric_m365.main",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": true
     },
     {
-      "name": "Tests: unit (pytest)",
+      "name": "Tests: core (pytest)",
       "type": "debugpy",
       "request": "launch",
       "module": "pytest",
       "args": [
-        "tests/unit",
+        "packages/langgraph-fabric-core/tests",
         "-v"
       ],
       "cwd": "${workspaceFolder}",
@@ -46,14 +46,53 @@
       "justMyCode": false
     },
     {
-      "name": "Tests: integration (pytest)",
+      "name": "Tests: api (pytest)",
       "type": "debugpy",
       "request": "launch",
       "module": "pytest",
       "args": [
-        "tests/integration",
+        "packages/langgraph-fabric-api/tests",
         "-v"
       ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "justMyCode": false
+    },
+    {
+      "name": "Tests: console (pytest)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "packages/langgraph-fabric-console/tests",
+        "-v"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "justMyCode": false
+    },
+    {
+      "name": "Tests: m365 (pytest)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "packages/langgraph-fabric-m365/tests",
+        "-v"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "justMyCode": false
+    },
+    {
+      "name": "Tests: all (pytest)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-v"],
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",

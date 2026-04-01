@@ -1,6 +1,6 @@
 ---
 description: Python coding standards for this repository
-applyTo: "src/**/*.py"
+applyTo: "packages/**/*.py"
 ---
 
 ## Python Standards
