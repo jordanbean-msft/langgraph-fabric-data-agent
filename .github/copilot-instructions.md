@@ -1,11 +1,23 @@
 ---
 title: Repository Copilot Instructions
-description: Repository-wide guidance for implementing and validating this Python LangGraph sample
+description: Repository-wide guidance for implementing and validating this Python LangGraph monorepo sample
 ---
 
 ## Purpose
 
-This repository is a Python sample that demonstrates a LangGraph-based AI agent calling a Fabric Data Agent via MCP. Keep implementation simple, explicit, and testable.
+This repository is a Python monorepo sample demonstrating a LangGraph-based AI agent calling a Fabric Data Agent via MCP. It is structured as a uv workspace with four packages that cleanly separate the core LangGraph implementation from each client interface. Keep implementation simple, explicit, and testable.
+
+## Monorepo package layout
+
+```
+packages/
+  langgraph-fabric-core/     # Interface-agnostic: graph, orchestrator, Fabric MCP client, auth, LLM factory
+  langgraph-fabric-api/      # FastAPI streaming interface (depends on core)
+  langgraph-fabric-console/  # Interactive terminal interface (depends on core)
+  langgraph-fabric-m365/     # M365 Agents SDK / Teams / Copilot Chat (depends on core)
+```
+
+The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents SDK.
 
 ## Required engineering standards
 
@@ -20,35 +32,50 @@ This repository is a Python sample that demonstrates a LangGraph-based AI agent 
 
 ## Build and validation commands
 
-- Sync dependencies: uv sync --extra dev
-- Run lint: uv run ruff check .
-- Run unit tests: uv run pytest tests/unit
-- Run integration tests: uv run pytest tests/integration
-- Run all tests: uv run pytest
-- Run API: uv run python -m langgraph_fabric_data_agent.main_api
-- Run console: uv run python -m langgraph_fabric_data_agent.main_console
-- Run hosted adapter: uv run python -m langgraph_fabric_data_agent.main_hosted
+- Sync all packages: `uv sync --all-packages --extra dev`
+- Run lint: `uv run ruff check .`
+- Run all tests: `uv run pytest`
+- Run API: `uv run langgraph-fabric-api`
+- Run console: `uv run langgraph-fabric-console`
+- Run hosted adapter: `uv run langgraph-fabric-m365`
 
 ## Architecture map
 
-- src/langgraph_fabric_data_agent/core/config.py: environment and settings models
-- src/langgraph_fabric_data_agent/core/logging.py: logging setup and correlation helpers
-- src/langgraph_fabric_data_agent/fabric/auth.py: local and hosted token strategies
-- src/langgraph_fabric_data_agent/fabric/mcp_client.py: strict MCP protocol wrapper for Fabric
-- src/langgraph_fabric_data_agent/fabric/tools.py: LangChain tool wrappers over Fabric MCP
-- src/langgraph_fabric_data_agent/graph/workflow.py: LangGraph state graph and routing
-- src/langgraph_fabric_data_agent/graph/orchestrator.py: shared run and stream orchestration
-- src/langgraph_fabric_data_agent/api/app.py: FastAPI endpoints
-- src/langgraph_fabric_data_agent/cli/console.py: terminal experience with streaming
-- src/langgraph_fabric_data_agent/hosted/app.py: M365 Agents SDK hosted bridge and route handlers
-- src/langgraph_fabric_data_agent/hosted/oauth.py: hosted OAuth adaptive card flow, magic code handling, and state shims
-- src/langgraph_fabric_data_agent/hosted/runtime.py: hosted runtime env and SDK configuration
+### langgraph-fabric-core (`packages/langgraph-fabric-core/src/langgraph_fabric_core/`)
+- `core/config.py`: environment and settings models
+- `core/logging.py`: logging setup and correlation helpers
+- `fabric/auth.py`: local and hosted token strategies
+- `fabric/mcp_client.py`: strict MCP protocol wrapper for Fabric
+- `fabric/tools.py`: LangChain tool wrappers over Fabric MCP
+- `graph/workflow.py`: LangGraph state graph and routing
+- `graph/orchestrator.py`: shared run and stream orchestration
+- `llm/factory.py`: Azure OpenAI / Foundry chat model factory
+
+### langgraph-fabric-api (`packages/langgraph-fabric-api/src/langgraph_fabric_api/`)
+- `app.py`: FastAPI endpoints
+- `main.py`: API entrypoint
+
+### langgraph-fabric-console (`packages/langgraph-fabric-console/src/langgraph_fabric_console/`)
+- `console.py`: terminal experience with streaming
+- `main.py`: console entrypoint
+
+### langgraph-fabric-m365 (`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/`)
+- `app.py`: M365 Agents SDK hosted bridge and route handlers
+- `oauth.py`: hosted OAuth adaptive card flow, magic code handling, and state shims
+- `runtime.py`: hosted runtime env and SDK configuration
+- `main.py`: M365 hosted adapter entrypoint
 
 ## Hosted implementation guardrails
 
 - Keep hosted OAuth behavior user-friendly: send adaptive sign-in cards, disable sign-in action after initiation, and allow magic code redemption from chat messages.
-- When writing hosted state code, use the shared state helpers in src/langgraph_fabric_data_agent/hosted/oauth.py instead of calling TurnState.get_value directly to avoid SDK compatibility issues.
-- Keep hosted files modular: routing in src/langgraph_fabric_data_agent/hosted/app.py, OAuth behavior in src/langgraph_fabric_data_agent/hosted/oauth.py, runtime configuration in src/langgraph_fabric_data_agent/hosted/runtime.py.
+- When writing hosted state code, use the shared state helpers in `langgraph_fabric_m365/oauth.py` instead of calling TurnState.get_value directly to avoid SDK compatibility issues.
+- Keep hosted files modular: routing in `app.py`, OAuth behavior in `oauth.py`, runtime configuration in `runtime.py`.
+
+## Dependency rules
+
+- `langgraph-fabric-core` must not import from `langgraph_fabric_api`, `langgraph_fabric_console`, or `langgraph_fabric_m365`.
+- Interface packages (`api`, `console`, `m365`) declare `langgraph-fabric-core` as a workspace dependency.
+- Tests in each package only import from that package and `langgraph-fabric-core`.
 
 ## Pull request quality bar
 

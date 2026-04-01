@@ -1,0 +1,21 @@
+[project]
+name = "langgraph-fabric-api"
+version = "0.1.0"
+description = "FastAPI interface for the LangGraph Fabric Data Agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "langgraph-fabric-core",
+  "fastapi==0.135.3",
+  "uvicorn==0.42.0",
+]
+
+[project.scripts]
+langgraph-fabric-api = "langgraph_fabric_api.main:main"
+
+[tool.uv.sources]
+langgraph-fabric-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
