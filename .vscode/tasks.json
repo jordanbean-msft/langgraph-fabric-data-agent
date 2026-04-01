@@ -41,7 +41,10 @@
       "label": "run-hosted",
       "type": "shell",
       "command": "uv run python -m langgraph_fabric_data_agent.main_hosted",
-      "isBackground": true
+      "isBackground": true,
+      "presentation": {
+        "panel": "new"
+      }
     },
     {
       "label": "devtunnel-login",
@@ -59,18 +62,37 @@
       "command": "devtunnel show ${input:devTunnelId}"
     },
     {
+      "label": "devtunnel-port-configure",
+      "type": "shell",
+      "command": "devtunnel port delete ${input:devTunnelId} -p ${input:hostedPort} > /dev/null 2>&1 || true; devtunnel port create ${input:devTunnelId} -p ${input:hostedPort} --protocol http --host-header unchanged",
+      "presentation": {
+        "panel": "new"
+      }
+    },
+    {
       "label": "devtunnel-host",
       "type": "shell",
-      "command": "devtunnel host ${input:devTunnelId} -p ${input:hostedPort} --protocol https --allow-anonymous --host-header unchanged",
+      "command": "devtunnel host ${input:devTunnelId}",
       "isBackground": true,
-      "problemMatcher": []
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "new"
+      }
+    },
+    {
+      "label": "run-hosted-and-devtunnel-host",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "devtunnel-host",
+        "run-hosted"
+      ]
     },
     {
       "label": "run-hosted-with-devtunnel",
-      "dependsOrder": "parallel",
+      "dependsOrder": "sequence",
       "dependsOn": [
-        "run-hosted",
-        "devtunnel-host"
+        "devtunnel-port-configure",
+        "run-hosted-and-devtunnel-host"
       ]
     },
     {

@@ -1,7 +1,5 @@
 """M365 Agents SDK hosted bridge for Teams and Copilot Chat."""
 
-from os import environ
-
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -9,6 +7,7 @@ from langchain_core.messages import (
     messages_from_dict,
     messages_to_dict,
 )
+from microsoft_agents.activity import Activity, ActivityTypes
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import CloudAdapter
 from microsoft_agents.hosting.core import (
@@ -21,6 +20,21 @@ from microsoft_agents.hosting.core import (
 
 from langgraph_fabric_data_agent.core.config import AppSettings
 from langgraph_fabric_data_agent.graph.orchestrator import AgentOrchestrator
+from langgraph_fabric_data_agent.hosted.oauth import (
+    PENDING_PROMPT_KEY,
+    _disable_signin_card,
+    _extract_magic_code,
+    _get_hosted_user_token,
+    _state_delete,
+    _state_get,
+    _state_set,
+)
+from langgraph_fabric_data_agent.hosted.runtime import (
+    _build_hosted_environment,
+    _build_hosted_sdk_configuration,
+)
+
+HISTORY_KEY = "history"
 
 
 async def create_hosted_app(
@@ -28,10 +42,14 @@ async def create_hosted_app(
     orchestrator: AgentOrchestrator,
 ) -> AgentApplication[TurnState]:
     """Create hosted adapter plumbing that can be wired to Teams/Copilot Chat."""
+    hosted_env = _build_hosted_environment(settings)
+    hosted_sdk_configuration = _build_hosted_sdk_configuration(settings)
+    runtime_configuration = {**hosted_env, **hosted_sdk_configuration}
+
     storage = MemoryStorage()
-    connection_manager = MsalConnectionManager(**environ)
+    connection_manager = MsalConnectionManager(**runtime_configuration)
     adapter = CloudAdapter(connection_manager=connection_manager)
-    authorization = Authorization(storage, connection_manager, **environ)
+    authorization = Authorization(storage, connection_manager, **runtime_configuration)
 
     app_options = ApplicationOptions(
         adapter=adapter,
@@ -42,40 +60,79 @@ async def create_hosted_app(
     agent_app: AgentApplication[TurnState] = AgentApplication(
         authorization=authorization,
         options=app_options,
-        **environ,
+        **runtime_configuration,
     )
 
-    @agent_app.message(".*")
+    @agent_app.activity("message")
     async def handle_message(context, state: TurnState):
         text = getattr(context.activity, "text", "")
         user_id = getattr(getattr(context.activity, "from_property", None), "id", "hosted-user")
+        channel_id = getattr(context.activity, "channel_id", None)
+        magic_code = _extract_magic_code(text)
 
-        token_result = await context.adapter.get_user_token(
-            context,
-            settings.fabric_oauth_connection_name,
+        if not magic_code and text.strip():
+            _state_set(state, PENDING_PROMPT_KEY, text)
+
+        fabric_user_token = await _get_hosted_user_token(
+            context=context,
+            state=state,
+            settings=settings,
+            user_id=user_id,
+            channel_id=channel_id,
+            magic_code=magic_code,
         )
-        if not token_result or not getattr(token_result, "token", None):
-            await context.send_activity(
-                "Please sign in to continue.",
-            )
+
+        if not fabric_user_token:
+            if magic_code:
+                await context.send_activity(
+                    "We could not redeem that verification code. Please open the sign-in card and try again.",
+                )
             return
 
-        raw_history = state.get_value("conversation.history", list) or []
+        prompt = text
+        if magic_code:
+            pending_prompt = _state_get(state, PENDING_PROMPT_KEY)
+            if pending_prompt:
+                prompt = pending_prompt
+                _state_delete(state, PENDING_PROMPT_KEY)
+                await context.send_activity("Sign-in complete. Running your previous request.")
+            else:
+                await context.send_activity("Sign-in complete. Please enter your request.")
+                return
+
+        raw_history = _state_get(state, HISTORY_KEY) or []
         history: list[BaseMessage] = messages_from_dict(raw_history) if raw_history else []
 
         response = await orchestrator.run(
-            prompt=text,
+            prompt=prompt,
             channel="hosted",
             auth_mode="hosted",
             user_id=user_id,
-            fabric_user_token=token_result.token,
+            fabric_user_token=fabric_user_token,
             history=history,
         )
 
-        history.append(HumanMessage(content=text))
+        history.append(HumanMessage(content=prompt))
         history.append(AIMessage(content=response))
-        state.set_value("conversation.history", messages_to_dict(history))
+        _state_set(state, HISTORY_KEY, messages_to_dict(history))
 
         await context.send_activity(response)
+
+    @agent_app.activity("invoke")
+    async def handle_invoke(context, state: TurnState):
+        invoke_name = getattr(context.activity, "name", None)
+        if invoke_name in {"signin/tokenExchange", "signin/verifystate", "signin/verifyState"}:
+            await _disable_signin_card(
+                context,
+                state,
+                "Sign-in is in progress. Complete the sign-in flow and return to this chat.",
+            )
+
+        await context.send_activity(
+            Activity(
+                type=ActivityTypes.invoke_response,
+                value={"status": 200, "body": {}},
+            )
+        )
 
     return agent_app
