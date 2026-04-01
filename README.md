@@ -16,16 +16,16 @@ The hosted path is wired for Teams and Copilot Chat style usage through the M365
 
 ## Architecture
 
-- [src/langgraph_fabric_data_agent/config.py](src/langgraph_fabric_data_agent/config.py): centralized environment settings via pydantic-settings.
-- [src/langgraph_fabric_data_agent/logging_setup.py](src/langgraph_fabric_data_agent/logging_setup.py): structured logs with correlation context.
-- [src/langgraph_fabric_data_agent/auth.py](src/langgraph_fabric_data_agent/auth.py): local and hosted token strategies for Fabric.
-- [src/langgraph_fabric_data_agent/fabric_mcp_client.py](src/langgraph_fabric_data_agent/fabric_mcp_client.py): strict JSON-RPC MCP client wrapper.
-- [src/langgraph_fabric_data_agent/tools.py](src/langgraph_fabric_data_agent/tools.py): LangGraph tool integration over MCP.
-- [src/langgraph_fabric_data_agent/graph.py](src/langgraph_fabric_data_agent/graph.py): graph definition and tool routing.
-- [src/langgraph_fabric_data_agent/orchestrator.py](src/langgraph_fabric_data_agent/orchestrator.py): shared run and stream orchestration.
-- [src/langgraph_fabric_data_agent/api.py](src/langgraph_fabric_data_agent/api.py): FastAPI surface.
-- [src/langgraph_fabric_data_agent/console.py](src/langgraph_fabric_data_agent/console.py): terminal surface.
-- [src/langgraph_fabric_data_agent/hosted.py](src/langgraph_fabric_data_agent/hosted.py): hosted M365 adapter bridge.
+- [src/langgraph_fabric_data_agent/core/config.py](src/langgraph_fabric_data_agent/core/config.py): centralized environment settings via pydantic-settings.
+- [src/langgraph_fabric_data_agent/core/logging.py](src/langgraph_fabric_data_agent/core/logging.py): structured logs with correlation context.
+- [src/langgraph_fabric_data_agent/fabric/auth.py](src/langgraph_fabric_data_agent/fabric/auth.py): local and hosted token strategies for Fabric.
+- [src/langgraph_fabric_data_agent/fabric/mcp_client.py](src/langgraph_fabric_data_agent/fabric/mcp_client.py): strict JSON-RPC MCP client wrapper.
+- [src/langgraph_fabric_data_agent/fabric/tools.py](src/langgraph_fabric_data_agent/fabric/tools.py): LangGraph tool integration over MCP.
+- [src/langgraph_fabric_data_agent/graph/workflow.py](src/langgraph_fabric_data_agent/graph/workflow.py): graph definition and tool routing.
+- [src/langgraph_fabric_data_agent/graph/orchestrator.py](src/langgraph_fabric_data_agent/graph/orchestrator.py): shared run and stream orchestration.
+- [src/langgraph_fabric_data_agent/api/app.py](src/langgraph_fabric_data_agent/api/app.py): FastAPI surface.
+- [src/langgraph_fabric_data_agent/cli/console.py](src/langgraph_fabric_data_agent/cli/console.py): terminal surface.
+- [src/langgraph_fabric_data_agent/hosted/app.py](src/langgraph_fabric_data_agent/hosted/app.py): hosted M365 adapter bridge.
 
 ## Prerequisites
 
@@ -79,3 +79,4 @@ uv run pytest tests/integration
 - Fabric tool calls always require user authentication.
 - Local mode uses DefaultAzureCredential with interactive fallback.
 - Hosted mode expects Bot Service user tokens.
+- Logging supports a base `LOG_LEVEL` plus optional `LOG_LEVEL_OVERRIDE` values such as `langgraph_fabric_data_agent.graph:DEBUG,azure.core:WARNING`.

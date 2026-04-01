@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,13 +16,14 @@ class AppSettings(BaseSettings):
         case_sensitive=False,
     )
 
-    app_env: str = Field(default="dev", alias="APP_ENV")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_level_override: str | None = Field(default=None, alias="LOG_LEVEL_OVERRIDE")
     port: int = Field(default=8000, alias="PORT")
 
     azure_openai_endpoint: str = Field(alias="AZURE_OPENAI_ENDPOINT")
     azure_openai_deployment_name: str = Field(alias="AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
-    azure_openai_api_version: str = Field(default="preview", alias="AZURE_OPENAI_API_VERSION")
+    azure_openai_api_version: str = Field(default="2025-11-15-preview", alias="AZURE_OPENAI_API_VERSION")
+    azure_openai_scope: str = Field(default="https://ai.azure.com/.default", alias="AZURE_OPENAI_SCOPE")
 
     fabric_data_agent_mcp_url: str = Field(alias="FABRIC_DATA_AGENT_MCP_URL")
     fabric_data_agent_scope: str = Field(
@@ -61,6 +62,14 @@ class AppSettings(BaseSettings):
         default="",
         alias="CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET",
     )
+
+    @field_validator("log_level_override", mode="before")
+    @classmethod
+    def normalize_log_level_override(cls, value: str | None) -> str | None:
+        """Treat blank LOG_LEVEL_OVERRIDE values as unset."""
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
 
 @lru_cache(maxsize=1)

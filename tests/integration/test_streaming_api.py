@@ -1,8 +1,9 @@
 from collections.abc import AsyncIterator
+import importlib
 
 from fastapi.testclient import TestClient
 
-import langgraph_fabric_data_agent.api as api_module
+api_module = importlib.import_module("langgraph_fabric_data_agent.api.app")
 
 
 class FakeOrchestrator:
@@ -12,7 +13,10 @@ class FakeOrchestrator:
 
 
 def test_streaming_endpoint(monkeypatch):
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: FakeOrchestrator())
+    def fake_get_orchestrator() -> FakeOrchestrator:
+        return FakeOrchestrator()
+
+    monkeypatch.setattr(api_module, "get_orchestrator", fake_get_orchestrator)
     client = TestClient(api_module.app)
     response = client.post(
         "/chat/stream",

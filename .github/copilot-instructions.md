@@ -31,16 +31,16 @@ This repository is a Python sample that demonstrates a LangGraph-based AI agent 
 
 ## Architecture map
 
-* src/langgraph_fabric_data_agent/config.py: environment and settings models
-* src/langgraph_fabric_data_agent/logging_setup.py: logging setup and correlation helpers
-* src/langgraph_fabric_data_agent/auth.py: local and hosted token strategies
-* src/langgraph_fabric_data_agent/fabric_mcp_client.py: strict MCP protocol wrapper for Fabric
-* src/langgraph_fabric_data_agent/tools.py: LangChain tool wrappers over Fabric MCP
-* src/langgraph_fabric_data_agent/graph.py: LangGraph state graph and routing
-* src/langgraph_fabric_data_agent/orchestrator.py: shared run and stream orchestration
-* src/langgraph_fabric_data_agent/api.py: FastAPI endpoints
-* src/langgraph_fabric_data_agent/console.py: terminal experience with streaming
-* src/langgraph_fabric_data_agent/hosted.py: M365 Agents SDK hosted bridge
+* src/langgraph_fabric_data_agent/core/config.py: environment and settings models
+* src/langgraph_fabric_data_agent/core/logging.py: logging setup and correlation helpers
+* src/langgraph_fabric_data_agent/fabric/auth.py: local and hosted token strategies
+* src/langgraph_fabric_data_agent/fabric/mcp_client.py: strict MCP protocol wrapper for Fabric
+* src/langgraph_fabric_data_agent/fabric/tools.py: LangChain tool wrappers over Fabric MCP
+* src/langgraph_fabric_data_agent/graph/workflow.py: LangGraph state graph and routing
+* src/langgraph_fabric_data_agent/graph/orchestrator.py: shared run and stream orchestration
+* src/langgraph_fabric_data_agent/api/app.py: FastAPI endpoints
+* src/langgraph_fabric_data_agent/cli/console.py: terminal experience with streaming
+* src/langgraph_fabric_data_agent/hosted/app.py: M365 Agents SDK hosted bridge
 
 ## Pull request quality bar
 

@@ -9,6 +9,8 @@ uv.lock
 *.egg-info/
 dist/
 build/
+appPackage/build/
+appPackage/manifest.json
 
 # Environment files (never commit real secrets)
 .env

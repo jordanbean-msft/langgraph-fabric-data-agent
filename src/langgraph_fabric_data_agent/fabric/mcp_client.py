@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 
-from langgraph_fabric_data_agent.auth import AuthContext, FabricTokenProvider
-from langgraph_fabric_data_agent.config import AppSettings
+from langgraph_fabric_data_agent.core.config import AppSettings
+from langgraph_fabric_data_agent.fabric.auth import AuthContext, FabricTokenProvider
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@ import pytest
 import respx
 from httpx import Response
 
-from langgraph_fabric_data_agent.auth import AuthContext
-from langgraph_fabric_data_agent.fabric_mcp_client import FabricMcpClient
+from langgraph_fabric_data_agent.fabric.auth import AuthContext
+from langgraph_fabric_data_agent.fabric.mcp_client import FabricMcpClient
 
 
 class FakeTokenProvider:

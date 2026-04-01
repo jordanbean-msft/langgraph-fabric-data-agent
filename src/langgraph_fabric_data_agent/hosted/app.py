@@ -2,6 +2,13 @@
 
 from os import environ
 
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    messages_from_dict,
+    messages_to_dict,
+)
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import CloudAdapter
 from microsoft_agents.hosting.core import (
@@ -12,8 +19,8 @@ from microsoft_agents.hosting.core import (
     TurnState,
 )
 
-from langgraph_fabric_data_agent.config import AppSettings
-from langgraph_fabric_data_agent.orchestrator import AgentOrchestrator
+from langgraph_fabric_data_agent.core.config import AppSettings
+from langgraph_fabric_data_agent.graph.orchestrator import AgentOrchestrator
 
 
 async def create_hosted_app(
@@ -39,7 +46,7 @@ async def create_hosted_app(
     )
 
     @agent_app.message(".*")
-    async def handle_message(context, _state: TurnState):
+    async def handle_message(context, state: TurnState):
         text = getattr(context.activity, "text", "")
         user_id = getattr(getattr(context.activity, "from_property", None), "id", "hosted-user")
 
@@ -53,13 +60,22 @@ async def create_hosted_app(
             )
             return
 
+        raw_history = state.get_value("conversation.history", list) or []
+        history: list[BaseMessage] = messages_from_dict(raw_history) if raw_history else []
+
         response = await orchestrator.run(
             prompt=text,
             channel="hosted",
             auth_mode="hosted",
             user_id=user_id,
             fabric_user_token=token_result.token,
+            history=history,
         )
+
+        history.append(HumanMessage(content=text))
+        history.append(AIMessage(content=response))
+        state.set_value("conversation.history", messages_to_dict(history))
+
         await context.send_activity(response)
 
     return agent_app

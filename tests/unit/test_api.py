@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from langgraph_fabric_data_agent.api import app
+from langgraph_fabric_data_agent.api.app import app
 
 
 def test_health_endpoint():

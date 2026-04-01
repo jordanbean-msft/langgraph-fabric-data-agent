@@ -7,11 +7,11 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
-from langgraph_fabric_data_agent.auth import FabricTokenProvider
-from langgraph_fabric_data_agent.config import get_settings
-from langgraph_fabric_data_agent.fabric_mcp_client import FabricMcpClient
-from langgraph_fabric_data_agent.llm import create_chat_model
-from langgraph_fabric_data_agent.orchestrator import AgentOrchestrator
+from langgraph_fabric_data_agent.core.config import get_settings
+from langgraph_fabric_data_agent.fabric.auth import FabricTokenProvider
+from langgraph_fabric_data_agent.fabric.mcp_client import FabricMcpClient
+from langgraph_fabric_data_agent.graph.orchestrator import AgentOrchestrator
+from langgraph_fabric_data_agent.llm.factory import create_chat_model
 
 
 @lru_cache(maxsize=1)
