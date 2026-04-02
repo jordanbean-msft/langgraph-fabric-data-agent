@@ -5,12 +5,26 @@ AgentOrchestrator (langgraph-fabric-core) without requiring any cloud services.
 """
 
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph_fabric_console.console import run_console
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
+
+
+def _create_fake_settings(microsoft_tenant_id: str = "test-tenant") -> MagicMock:
+    """Create a mock CoreSettings object for testing."""
+    settings = MagicMock()
+    settings.microsoft_tenant_id = microsoft_tenant_id
+    return settings
+
+
+def _create_fake_token_provider(user_id: str = "test-user@example.com") -> MagicMock:
+    """Create a mock FabricTokenProvider object for testing."""
+    token_provider = MagicMock()
+    token_provider.get_authenticated_user_id.return_value = user_id
+    return token_provider
 
 
 class _CapturingOrchestrator:
@@ -33,10 +47,12 @@ async def test_console_sends_prompt_to_orchestrator() -> None:
     """Console integration: user input reaches orchestrator.stream() as `prompt`."""
     inputs = iter(["What is revenue?", ""])
     orchestrator = _CapturingOrchestrator(["Revenue is $100M."])
+    settings = _create_fake_settings()
+    token_provider = _create_fake_token_provider()
 
     with patch("rich.console.Console.input", side_effect=inputs):
         with patch("builtins.print"):
-            await run_console(orchestrator)
+            await run_console(orchestrator, settings, token_provider)
 
     assert len(orchestrator.calls) == 1
     assert orchestrator.calls[0]["prompt"] == "What is revenue?"
@@ -49,10 +65,12 @@ async def test_console_accumulates_history_across_turns() -> None:
     """Console integration: history grows turn-by-turn and is passed to each call."""
     inputs = iter(["First question", "Second question", ""])
     orchestrator = _CapturingOrchestrator(["First answer", "Second answer"])
+    settings = _create_fake_settings()
+    token_provider = _create_fake_token_provider()
 
     with patch("rich.console.Console.input", side_effect=inputs):
         with patch("builtins.print"):
-            await run_console(orchestrator)
+            await run_console(orchestrator, settings, token_provider)
 
     assert len(orchestrator.calls) == 2
 
@@ -75,7 +93,7 @@ async def test_console_with_real_orchestrator_streaming() -> None:
     class FakeStreamGraph:
         """Graph that yields streaming events like LangGraph does."""
 
-        async def astream_events(self, _state, version):
+        async def astream_events(self, _state, **_kwargs):
             for word in ["Streaming", " answer", " here"]:
                 yield {
                     "event": "on_chat_model_stream",
@@ -84,6 +102,8 @@ async def test_console_with_real_orchestrator_streaming() -> None:
 
     real_orchestrator = AgentOrchestrator.__new__(AgentOrchestrator)
     real_orchestrator.__dict__["_graph"] = FakeStreamGraph()
+    settings = _create_fake_settings()
+    token_provider = _create_fake_token_provider()
 
     inputs = iter(["stream test", ""])
 
@@ -92,7 +112,7 @@ async def test_console_with_real_orchestrator_streaming() -> None:
         side_effect=inputs,
     ):
         with patch("builtins.print"):
-            await run_console(real_orchestrator)
+            await run_console(real_orchestrator, settings, token_provider)
 
     # Verify the orchestrator was called with the correct input
     # The actual streamed output is handled by Rich's console, so we
@@ -103,12 +123,14 @@ async def test_console_with_real_orchestrator_streaming() -> None:
 async def test_console_exits_immediately_on_first_empty_input() -> None:
     """Console integration: empty input on the first turn exits without any orchestrator calls."""
     orchestrator = _CapturingOrchestrator([])
+    settings = _create_fake_settings()
+    token_provider = _create_fake_token_provider()
 
     with patch(
         "rich.console.Console.input",
         return_value="",
     ):
         with patch("builtins.print"):
-            await run_console(orchestrator)
+            await run_console(orchestrator, settings, token_provider)
 
     assert orchestrator.calls == []

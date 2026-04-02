@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 AGENT_CONFIGURATION_KEY: AppKey[AgentAuthConfiguration] = AppKey("agent_configuration")
 AGENT_APP_KEY: AppKey[AgentApplication[TurnState]] = AppKey("agent_app")
 ADAPTER_KEY: AppKey[object] = AppKey("adapter")
+AGENT_CONFIGURATION_STATE_KEY = "agent_configuration"
+AGENT_APP_STATE_KEY = "agent_app"
+ADAPTER_STATE_KEY = "adapter"
 
 
 async def _build_m365_agent_app() -> AgentApplication[TurnState]:
@@ -64,9 +67,15 @@ def create_server_app(agent_app: AgentApplication[TurnState], settings) -> Appli
     app = Application(middlewares=[jwt_authorization_middleware])
     app.router.add_post("/api/messages", entry_point)
     app.router.add_get("/api/messages", health_check)
-    app[AGENT_CONFIGURATION_KEY] = _resolve_agent_auth_configuration(agent_app, settings)
+    auth_config = _resolve_agent_auth_configuration(agent_app, settings)
+    app[AGENT_CONFIGURATION_KEY] = auth_config
     app[AGENT_APP_KEY] = agent_app
     app[ADAPTER_KEY] = agent_app.adapter
+
+    # Microsoft Agents middleware currently reads app state using string keys.
+    app._state[AGENT_CONFIGURATION_STATE_KEY] = auth_config
+    app._state[AGENT_APP_STATE_KEY] = agent_app
+    app._state[ADAPTER_STATE_KEY] = agent_app.adapter
     return app
 
 

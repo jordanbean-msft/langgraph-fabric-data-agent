@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "langgraph_fabric_console.main",
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/packages/langgraph-fabric-console/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": true
     },
@@ -17,7 +17,7 @@
       "request": "launch",
       "module": "langgraph_fabric_api.main",
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/packages/langgraph-fabric-api/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": true
     },
@@ -27,7 +27,7 @@
       "request": "launch",
       "module": "langgraph_fabric_m365.main",
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/packages/langgraph-fabric-m365/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": true
     },
@@ -41,7 +41,6 @@
         "-v"
       ],
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": false
     },
@@ -55,7 +54,6 @@
         "-v"
       ],
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": false
     },
@@ -69,7 +67,6 @@
         "-v"
       ],
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": false
     },
@@ -83,7 +80,6 @@
         "-v"
       ],
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": false
     },
@@ -96,7 +92,6 @@
         "-v"
       ],
       "cwd": "${workspaceFolder}",
-      "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": false
     }

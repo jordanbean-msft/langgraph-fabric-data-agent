@@ -1,6 +1,8 @@
 """Console interaction surface."""
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langgraph_fabric_core.core.config import CoreSettings
+from langgraph_fabric_core.fabric.auth import FabricTokenProvider
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from rich.console import Console
 from rich.panel import Panel
@@ -9,13 +11,36 @@ from rich.text import Text
 console = Console()
 
 
-async def run_console(orchestrator: AgentOrchestrator) -> None:
+async def run_console(
+    orchestrator: AgentOrchestrator,
+    settings: CoreSettings,
+    token_provider: FabricTokenProvider,
+) -> None:
     """Run interactive terminal chat with streamed responses."""
+    identity = token_provider.get_authenticated_identity()
+    user_id = identity.user_id
+
     # Welcome message
     welcome_text = Text("LangGraph Fabric MCP Console", style="bold cyan")
+
+    # Build connection info
+    tenant_info = identity.tenant_id
+    if tenant_info == "unknown":
+        tenant_info = settings.microsoft_tenant_id if settings.microsoft_tenant_id else "default"
+    connection_info = Text(
+        f"Tenant: {tenant_info}\nUser ID: {user_id}",
+        style="dim cyan",
+    )
+
+    # Combine welcome and connection info
+    welcome_panel_text = Text()
+    welcome_panel_text.append(welcome_text)
+    welcome_panel_text.append("\n\n")
+    welcome_panel_text.append(connection_info)
+
     console.print(
         Panel(
-            welcome_text,
+            welcome_panel_text,
             title="[bold green]✨ Welcome[/bold green]",
             border_style="cyan",
             padding=(1, 2),
@@ -43,7 +68,7 @@ async def run_console(orchestrator: AgentOrchestrator) -> None:
                 prompt=prompt,
                 channel="console",
                 auth_mode="local",
-                user_id="console-user",
+                user_id=user_id,
                 history=history,
             ):
                 # Check if this is a tool call message

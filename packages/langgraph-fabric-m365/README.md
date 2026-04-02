@@ -7,7 +7,7 @@ Bridges the LangGraph agent to the Bot Framework messaging pipeline.
 
 | Module | Purpose |
 | --- | --- |
-| `config.py` | M365-specific settings (`M365Settings`) reading from `.env.m365` |
+| `config.py` | M365-specific settings (`M365Settings`) reading from `.env` |
 | `app.py` | M365 adapter bridge and route wiring |
 | `oauth.py` | M365 OAuth Adaptive Card flow, magic code handling, and M365 token resolution |
 | `runtime.py` | M365 runtime environment and SDK configuration builders |

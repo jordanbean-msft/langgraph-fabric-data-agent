@@ -43,7 +43,7 @@ FastAPI streaming endpoint for HTTP clients.
 
 | Module | Purpose |
 | --- | --- |
-| [`config.py`](../packages/langgraph-fabric-api/src/langgraph_fabric_api/config.py) | API-specific settings (`ApiSettings`) reading from `.env.api` |
+| [`config.py`](../packages/langgraph-fabric-api/src/langgraph_fabric_api/config.py) | API-specific settings (`ApiSettings`) reading from `.env` |
 | [`app.py`](../packages/langgraph-fabric-api/src/langgraph_fabric_api/app.py) | FastAPI surface with `/health` and `/chat/stream` |
 | [`main.py`](../packages/langgraph-fabric-api/src/langgraph_fabric_api/main.py) | API entrypoint (`langgraph-fabric-api` script) |
 
@@ -55,7 +55,7 @@ Interactive terminal surface with streaming responses.
 
 | Module | Purpose |
 | --- | --- |
-| [`config.py`](../packages/langgraph-fabric-console/src/langgraph_fabric_console/config.py) | Console-specific settings (`ConsoleSettings`) reading from `.env.console` |
+| [`config.py`](../packages/langgraph-fabric-console/src/langgraph_fabric_console/config.py) | Console-specific settings (`ConsoleSettings`) reading from `.env` |
 | [`console.py`](../packages/langgraph-fabric-console/src/langgraph_fabric_console/console.py) | Interactive terminal surface with streaming |
 | [`main.py`](../packages/langgraph-fabric-console/src/langgraph_fabric_console/main.py) | Console entrypoint (`langgraph-fabric-console` script) |
 
@@ -67,7 +67,7 @@ M365 adapter for Teams and Copilot Chat via the M365 Agents SDK.
 
 | Module | Purpose |
 | --- | --- |
-| [`config.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/config.py) | M365-specific settings (`M365Settings`) reading from `.env.m365` |
+| [`config.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/config.py) | M365-specific settings (`M365Settings`) reading from `.env` |
 | [`app.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/app.py) | M365 adapter bridge and route wiring |
 | [`oauth.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py) | M365 OAuth card flow, magic code handling, and M365 token resolution |
 | [`runtime.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/runtime.py) | M365 runtime environment and SDK configuration builders |

@@ -48,7 +48,7 @@ def test_main_wires_dependencies_and_runs_console() -> None:
     fabric_client.assert_called_once_with(settings, token_provider)
     create_chat_model.assert_called_once_with(settings)
     agent_orchestrator.assert_called_once_with(model, client)
-    run_console.assert_called_once_with(orchestrator)
+    run_console.assert_called_once_with(orchestrator, settings, token_provider)
     asyncio_run.assert_called_once_with(run_console_coro)
 
 
@@ -96,5 +96,5 @@ def test_module_script_entrypoint_invokes_main_path() -> None:
     fabric_client.assert_called_once_with(settings, token_provider)
     create_chat_model.assert_called_once_with(settings)
     agent_orchestrator.assert_called_once_with(model, client)
-    run_console.assert_called_once_with(orchestrator)
+    run_console.assert_called_once_with(orchestrator, settings, token_provider)
     asyncio_run.assert_called_once_with(run_console_coro)

@@ -1,9 +1,27 @@
 from collections.abc import Iterator
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langgraph_fabric_console.console import run_console
+from langgraph_fabric_core.fabric.auth import AuthenticatedIdentity
+
+
+def _create_fake_settings(microsoft_tenant_id: str = "test-tenant") -> MagicMock:
+    """Create a mock CoreSettings object for testing."""
+    settings = MagicMock()
+    settings.microsoft_tenant_id = microsoft_tenant_id
+    return settings
+
+
+def _create_fake_token_provider(user_id: str = "test-user@example.com") -> MagicMock:
+    """Create a mock FabricTokenProvider object for testing."""
+    token_provider = MagicMock()
+    token_provider.get_authenticated_identity.return_value = AuthenticatedIdentity(
+        user_id=user_id,
+        tenant_id="11111111-1111-1111-1111-111111111111",
+    )
+    return token_provider
 
 
 class FakeStatus:
@@ -59,16 +77,18 @@ async def test_run_console_streams_response_and_updates_history() -> None:
             yield " world"
 
     orchestrator = FakeOrchestrator()
+    settings = _create_fake_settings()
+    token_provider = _create_fake_token_provider()
     fake_console = FakeConsole(iter(["what is revenue?", "show me margin", ""]))
 
     with patch("langgraph_fabric_console.console.console", fake_console):
-        await run_console(orchestrator)
+        await run_console(orchestrator, settings, token_provider)
 
     assert len(orchestrator.stream_calls) == 2
     assert orchestrator.stream_calls[0]["prompt"] == "what is revenue?"
     assert orchestrator.stream_calls[0]["channel"] == "console"
     assert orchestrator.stream_calls[0]["auth_mode"] == "local"
-    assert orchestrator.stream_calls[0]["user_id"] == "console-user"
+    assert orchestrator.stream_calls[0]["user_id"] == "test-user@example.com"
     assert len(orchestrator.stream_calls[0]["history_snapshot"]) == 0
     assert len(orchestrator.stream_calls[1]["history_snapshot"]) == 2
 
@@ -83,10 +103,12 @@ async def test_run_console_exits_on_empty_input() -> None:
             yield "should not be reached"
 
     orchestrator = FakeOrchestrator()
+    settings = _create_fake_settings()
+    token_provider = _create_fake_token_provider()
     fake_console = FakeConsole(iter(["   "]))
 
     with patch("langgraph_fabric_console.console.console", fake_console):
-        await run_console(orchestrator)
+        await run_console(orchestrator, settings, token_provider)
 
     assert not orchestrator.stream_called
 
@@ -99,10 +121,12 @@ async def test_run_console_handles_tool_message_chunks() -> None:
             yield "Done"
 
     orchestrator = FakeOrchestrator()
+    settings = _create_fake_settings()
+    token_provider = _create_fake_token_provider()
     fake_console = FakeConsole(iter(["run tool", ""]))
 
     with patch("langgraph_fabric_console.console.console", fake_console):
-        await run_console(orchestrator)
+        await run_console(orchestrator, settings, token_provider)
 
     status = fake_console.status_contexts[0]
     assert status.stop_calls == 1
@@ -112,3 +136,25 @@ async def test_run_console_handles_tool_message_chunks() -> None:
         args and args[0] == "[tool] querying Fabric" and kwargs.get("style") == "dim yellow"
         for args, kwargs in fake_console.print_calls
     )
+
+
+@pytest.mark.asyncio
+async def test_run_console_falls_back_to_settings_tenant_when_token_tenant_unknown() -> None:
+    class FakeOrchestrator:
+        async def stream(self, **_kwargs):
+            yield "Done"
+
+    orchestrator = FakeOrchestrator()
+    settings = _create_fake_settings(microsoft_tenant_id="settings-tenant")
+    token_provider = _create_fake_token_provider()
+    token_provider.get_authenticated_identity.return_value = AuthenticatedIdentity(
+        user_id="test-user@example.com",
+        tenant_id="unknown",
+    )
+    fake_console = FakeConsole(iter(["hi", ""]))
+
+    with patch("langgraph_fabric_console.console.console", fake_console):
+        await run_console(orchestrator, settings, token_provider)
+
+    printed_welcome = str(fake_console.print_calls[0][0][0].renderable)
+    assert "settings-tenant" in printed_welcome

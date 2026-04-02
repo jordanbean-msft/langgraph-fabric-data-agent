@@ -43,7 +43,7 @@ def build_m365_sdk_configuration(settings: M365Settings) -> dict[str, dict]:
         missing = ", ".join(missing_keys)
         raise ValueError(
             "Missing required M365 service connection settings: "
-            f"{missing}. Configure these in .env.m365 (see .env.m365.example) or export them in your shell."
+            f"{missing}. Configure these in .env (see .env.example) or export them in your shell."
         )
 
     return {

@@ -87,11 +87,15 @@ The server listens on port `8000` by default. Override it with `PORT=<number>` i
    ```bash
    cd packages/langgraph-fabric-m365
    cp appPackage/manifest.sample.json appPackage/manifest.json
-   # Edit appPackage/manifest.json and replace <YOUR_APP_ID> with MICROSOFT_APP_ID
-   cd appPackage && zip -r ../../../teams-app-package.zip manifest.json color.png outline.png
+   # Edit appPackage/manifest.json and replace the placeholder values (see azure-bot-service.md)
+   mkdir -p appPackage/build
+   zip -j appPackage/build/langgraph-fabric-data-agent-m365.zip \
+     appPackage/manifest.json appPackage/color.png appPackage/outline.png
    ```
 
-2. In Teams, go to **Apps → Manage your apps → Upload an app → Upload a custom app** and select `teams-app-package.zip`.
+   Or use the VS Code task **`build-m365-app-package`** after updating `appPackage/manifest.json`.
+
+2. In Teams, go to **Apps → Manage your apps → Upload an app → Upload a custom app** and select `appPackage/build/langgraph-fabric-data-agent-m365.zip`.
 
 3. Open the app in Teams and send a message to trigger the sign-in flow.
 

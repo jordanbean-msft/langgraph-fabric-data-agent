@@ -48,7 +48,7 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 
 - `core/config.py`: shared base settings (`CoreSettings`) — Azure OpenAI, Fabric MCP, logging, port
 - `core/logging.py`: logging setup and correlation helpers
-- `fabric/auth.py`: local and M365 token strategies for Fabric
+- `fabric/auth.py`: local and M365 token strategies for Fabric; includes `get_authenticated_user_id()` to extract user principal name from JWT tokens
 - `fabric/mcp_client.py`: strict MCP protocol wrapper for Fabric
 - `fabric/tools.py`: LangChain tool wrappers over Fabric MCP
 - `graph/workflow.py`: LangGraph state graph and routing
@@ -64,7 +64,7 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 ### langgraph-fabric-console (`packages/langgraph-fabric-console/src/langgraph_fabric_console/`)
 
 - `config.py`: `ConsoleSettings(CoreSettings)` reading from `packages/langgraph-fabric-console/.env`
-- `console.py`: terminal experience with streaming
+- `console.py`: terminal experience with streaming; displays authenticated user tenant and user ID
 - `main.py`: console entrypoint
 
 ### langgraph-fabric-m365 (`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/`)
@@ -93,10 +93,20 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - Interface packages (`api`, `console`, `m365`) declare `langgraph-fabric-core` as a workspace dependency.
 - Tests in each package only import from that package and `langgraph-fabric-core`.
 
+## Testing patterns
+
+- **JWT token decoding**: When testing JWT handling, create helper functions (e.g., `_create_jwt_token()`) that generate valid tokens with specified claims. Test happy paths (e.g., UPN extraction), fallback paths (e.g., OID fallback), and error cases (malformed tokens, invalid JSON).
+- **Authenticate credentials and token providers**: Mock credential objects with `SimpleNamespace` to control token responses. Test both success and failure paths (e.g., `ClientAuthenticationError`, `CredentialUnavailableError` fallbacks).
+- **Console/API integration**: Create fake orchestrators that capture calls to verify parameters are passed correctly (e.g., user_id, auth_mode, channel).
+- **Configuration loading**: Use `monkeypatch` to set env vars and verify settings are read correctly; test defaults and fallbacks.
+
 ## Pull request quality bar
 
 - Keep the demo straightforward and easy to read.
-- Include tests for all newly added behavior.
+- Include tests for all newly added behavior:
+  - **Core utility functions** (e.g., auth, logging, LLM factories): Unit tests with mocks; test edge cases, error paths, and fallback scenarios.
+  - **Console/API endpoints and orchestration**: Integration tests that verify the flow end-to-end; unit tests for individual components.
+  - **Configuration and settings**: Unit tests for validation, defaults, and env file loading.
 - Do not merge with test warnings. Treat warnings as failures and either fix root causes or add a narrowly scoped, justified filter for known third-party teardown noise.
 - Prefer deterministic mocks over network calls in tests.
 - Keep commit scope coherent and focused.

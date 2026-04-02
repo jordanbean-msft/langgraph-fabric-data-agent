@@ -19,7 +19,7 @@ def main() -> None:
     client = FabricMcpClient(settings, token_provider)
     model = create_chat_model(settings)
     orchestrator = AgentOrchestrator(model, client)
-    asyncio.run(run_console(orchestrator))
+    asyncio.run(run_console(orchestrator, settings, token_provider))
 
 
 if __name__ == "__main__":
