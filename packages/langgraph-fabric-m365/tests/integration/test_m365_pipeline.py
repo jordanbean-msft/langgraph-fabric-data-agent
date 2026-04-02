@@ -1,6 +1,6 @@
 """Integration tests for the M365 package interacting with the core orchestrator.
 
-Tests verify that the hosted app handlers (langgraph-fabric-m365) correctly
+Tests verify that the M365 app handlers (langgraph-fabric-m365) correctly
 drive AgentOrchestrator (langgraph-fabric-core) without requiring real Azure or
 Teams services.
 """
@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, messages_from_dict
-from langgraph_fabric_core.core.config import AppSettings
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
-from langgraph_fabric_m365.app import HISTORY_KEY, create_hosted_app
+from langgraph_fabric_m365.app import HISTORY_KEY, create_m365_app
+from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import PENDING_PROMPT_KEY
 from microsoft_agents.activity import ActivityTypes
 
 
-def _make_settings(**overrides) -> AppSettings:
+def _make_settings(**overrides) -> M365Settings:
     base = {
         "azure_openai_endpoint": "https://example.services.ai.azure.com/api/projects/demo",
         "azure_openai_deployment_name": "gpt-5.4",
@@ -42,7 +42,7 @@ def _make_settings(**overrides) -> AppSettings:
         "fabric_oauth_connection_name": "FabricOAuth2",
     }
     base.update(overrides)
-    return AppSettings.model_construct(**base)
+    return M365Settings.model_construct(**base)
 
 
 class _FakeAgentApp:
@@ -126,11 +126,11 @@ async def test_m365_message_handler_drives_real_orchestrator(
     real_orchestrator = _make_real_orchestrator("Revenue is $100M for Q1.")
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
-    agent_app = await create_hosted_app(settings, real_orchestrator)
+    agent_app = await create_m365_app(settings, real_orchestrator)
     message_handler = agent_app._handlers["message"]
 
     context = SimpleNamespace(
@@ -171,11 +171,11 @@ async def test_m365_message_handler_preserves_history_across_turns(
     real_orchestrator.__dict__["_graph"] = _FakeGraph()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
-    agent_app = await create_hosted_app(settings, real_orchestrator)
+    agent_app = await create_m365_app(settings, real_orchestrator)
     message_handler = agent_app._handlers["message"]
 
     state = _FakeState()
@@ -230,7 +230,7 @@ async def test_m365_invoke_handler_responds_independently_of_orchestrator(
         AsyncMock(),
     )
 
-    agent_app = await create_hosted_app(settings, real_orchestrator)
+    agent_app = await create_m365_app(settings, real_orchestrator)
     invoke_handler = agent_app._handlers["invoke"]
 
     context = SimpleNamespace(
@@ -256,11 +256,11 @@ async def test_m365_sign_in_flow_then_message_uses_pending_prompt(
 
     # Simulate token redemption success
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
-    agent_app = await create_hosted_app(settings, real_orchestrator)
+    agent_app = await create_m365_app(settings, real_orchestrator)
     message_handler = agent_app._handlers["message"]
 
     # User sends initial message (no token yet in a real flow, but we're testing

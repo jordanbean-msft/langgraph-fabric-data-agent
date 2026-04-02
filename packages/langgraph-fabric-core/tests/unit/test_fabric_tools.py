@@ -40,7 +40,7 @@ async def test_build_fabric_tool_invokes_mcp_tool_with_state_auth_context() -> N
     auth_context = client.call_tool.await_args.kwargs["auth_context"]
     assert auth_context.mode == "local"
     assert auth_context.user_id == "console-user"
-    assert auth_context.hosted_user_token is None
+    assert auth_context.user_token is None
 
 
 @pytest.mark.asyncio
@@ -51,8 +51,8 @@ async def test_build_fabric_tool_defaults_tool_name_when_mcp_list_is_empty() -> 
 
     tool = build_fabric_tool(client)
     state = {
-        "auth_mode": "hosted",
-        "user_id": "hosted-user",
+        "auth_mode": "m365",
+        "user_id": "m365-user",
         "fabric_user_token": "token-123",
     }
 
@@ -65,9 +65,9 @@ async def test_build_fabric_tool_defaults_tool_name_when_mcp_list_is_empty() -> 
         auth_context=client.call_tool.await_args.kwargs["auth_context"],
     )
     auth_context = client.call_tool.await_args.kwargs["auth_context"]
-    assert auth_context.mode == "hosted"
-    assert auth_context.user_id == "hosted-user"
-    assert auth_context.hosted_user_token == "token-123"
+    assert auth_context.mode == "m365"
+    assert auth_context.user_id == "m365-user"
+    assert auth_context.user_token == "token-123"
 
 
 @pytest.mark.asyncio

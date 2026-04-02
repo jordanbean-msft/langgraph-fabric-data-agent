@@ -24,7 +24,7 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - Always use uv for environment and dependency management.
 - Keep Python imports at the top of files.
 - Do not use lazy imports or wrap imports in try/except blocks.
-- Prefer pydantic-settings for centralized configuration.
+- Prefer pydantic-settings for centralized configuration; each client package has its own settings class.
 - Use structured logging with correlation identifiers.
 - Keep FastAPI endpoints unauthenticated in this sample.
 - Require user authentication for Fabric calls.
@@ -37,14 +37,14 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - Run all tests: `uv run pytest`
 - Run API: `uv run langgraph-fabric-api`
 - Run console: `uv run langgraph-fabric-console`
-- Run hosted adapter: `uv run langgraph-fabric-m365`
+- Run M365 adapter: `uv run langgraph-fabric-m365`
 
 ## Architecture map
 
 ### langgraph-fabric-core (`packages/langgraph-fabric-core/src/langgraph_fabric_core/`)
-- `core/config.py`: environment and settings models
+- `core/config.py`: shared base settings (`CoreSettings`) — Azure OpenAI, Fabric MCP, logging, port
 - `core/logging.py`: logging setup and correlation helpers
-- `fabric/auth.py`: local and hosted token strategies
+- `fabric/auth.py`: local and M365 token strategies for Fabric
 - `fabric/mcp_client.py`: strict MCP protocol wrapper for Fabric
 - `fabric/tools.py`: LangChain tool wrappers over Fabric MCP
 - `graph/workflow.py`: LangGraph state graph and routing
@@ -52,24 +52,33 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - `llm/factory.py`: Azure OpenAI / Foundry chat model factory
 
 ### langgraph-fabric-api (`packages/langgraph-fabric-api/src/langgraph_fabric_api/`)
+- `config.py`: `ApiSettings(CoreSettings)` reading from `.env.api` — adds OBO fields
 - `app.py`: FastAPI endpoints
 - `main.py`: API entrypoint
 
 ### langgraph-fabric-console (`packages/langgraph-fabric-console/src/langgraph_fabric_console/`)
+- `config.py`: `ConsoleSettings(CoreSettings)` reading from `.env.console`
 - `console.py`: terminal experience with streaming
 - `main.py`: console entrypoint
 
 ### langgraph-fabric-m365 (`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/`)
-- `app.py`: M365 Agents SDK hosted bridge and route handlers
-- `oauth.py`: hosted OAuth adaptive card flow, magic code handling, and state shims
-- `runtime.py`: hosted runtime env and SDK configuration
-- `main.py`: M365 hosted adapter entrypoint
+- `config.py`: `M365Settings(CoreSettings)` reading from `.env.m365` — adds M365 bot fields
+- `app.py`: M365 Agents SDK adapter bridge and route handlers
+- `oauth.py`: M365 OAuth adaptive card flow, magic code handling, and M365 token resolution
+- `runtime.py`: M365 runtime env and SDK configuration
+- `main.py`: M365 adapter entrypoint
 
-## Hosted implementation guardrails
+## M365 implementation guardrails
 
-- Keep hosted OAuth behavior user-friendly: send adaptive sign-in cards, disable sign-in action after initiation, and allow magic code redemption from chat messages.
-- When writing hosted state code, use the shared state helpers in `langgraph_fabric_m365/oauth.py` instead of calling TurnState.get_value directly to avoid SDK compatibility issues.
-- Keep hosted files modular: routing in `app.py`, OAuth behavior in `oauth.py`, runtime configuration in `runtime.py`.
+- Keep M365 OAuth behavior user-friendly: send adaptive sign-in cards, disable sign-in action after initiation, and allow magic code redemption from chat messages.
+- When writing M365 state code, use the shared state helpers in `langgraph_fabric_m365/oauth.py` instead of calling TurnState.get_value directly to avoid SDK compatibility issues.
+- Keep M365 files modular: routing in `app.py`, OAuth behavior in `oauth.py`, runtime configuration in `runtime.py`.
+
+## Configuration rules
+
+- `CoreSettings` lives in `langgraph-fabric-core` and contains only shared settings (Azure OpenAI, Fabric MCP, logging, port, and optional microsoft_app_id/tenant_id for device-code auth).
+- Each client package (`api`, `console`, `m365`) defines its own settings class that extends `CoreSettings` and reads from its own env file (`.env.api`, `.env.console`, `.env.m365`).
+- Use the package-local `get_settings()` in each client package, not the core one.
 
 ## Dependency rules
 

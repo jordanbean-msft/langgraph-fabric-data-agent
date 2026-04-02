@@ -9,13 +9,14 @@ from functools import lru_cache
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity.aio import OnBehalfOfCredential
 from fastapi import FastAPI, HTTPException, Request
-from langgraph_fabric_core.core.config import AppSettings, get_settings
 from langgraph_fabric_core.fabric.auth import FabricTokenProvider
 from langgraph_fabric_core.fabric.mcp_client import FabricMcpClient
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from langgraph_fabric_core.llm.factory import create_chat_model
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
+
+from langgraph_fabric_api.config import ApiSettings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def _extract_user_id(token: str) -> str:
         return "unknown"
 
 
-async def _get_fabric_token_obo(bearer_token: str, settings: AppSettings) -> str:
+async def _get_fabric_token_obo(bearer_token: str, settings: ApiSettings) -> str:
     """Exchange the caller's JWT for a Fabric-scoped token via the OBO flow.
 
     Requires MICROSOFT_APP_ID, MICROSOFT_APP_PASSWORD, and MICROSOFT_TENANT_ID
@@ -125,7 +126,7 @@ async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResp
         async for chunk in orchestrator.stream(
             prompt=body.prompt,
             channel="api",
-            auth_mode="hosted",
+            auth_mode="api",
             user_id=user_id,
             fabric_user_token=fabric_token,
         ):

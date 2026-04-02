@@ -26,9 +26,9 @@ The interface-agnostic package that all client packages depend on.
 
 | Module | Purpose |
 | --- | --- |
-| [`core/config.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/core/config.py) | Centralized environment settings via pydantic-settings |
+| [`core/config.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/core/config.py) | Shared base settings via pydantic-settings (`CoreSettings`) |
 | [`core/logging.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/core/logging.py) | Structured logs with correlation context |
-| [`fabric/auth.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/auth.py) | Local and hosted token strategies for Fabric |
+| [`fabric/auth.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/auth.py) | Local and M365 token strategies for Fabric |
 | [`fabric/mcp_client.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/mcp_client.py) | Strict JSON-RPC MCP client wrapper |
 | [`fabric/tools.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/tools.py) | LangChain tool wrappers over MCP |
 | [`graph/workflow.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/graph/workflow.py) | LangGraph state graph definition and tool routing |
@@ -43,6 +43,7 @@ FastAPI streaming endpoint for HTTP clients.
 
 | Module | Purpose |
 | --- | --- |
+| [`config.py`](../packages/langgraph-fabric-api/src/langgraph_fabric_api/config.py) | API-specific settings (`ApiSettings`) reading from `.env.api` |
 | [`app.py`](../packages/langgraph-fabric-api/src/langgraph_fabric_api/app.py) | FastAPI surface with `/health` and `/chat/stream` |
 | [`main.py`](../packages/langgraph-fabric-api/src/langgraph_fabric_api/main.py) | API entrypoint (`langgraph-fabric-api` script) |
 
@@ -54,6 +55,7 @@ Interactive terminal surface with streaming responses.
 
 | Module | Purpose |
 | --- | --- |
+| [`config.py`](../packages/langgraph-fabric-console/src/langgraph_fabric_console/config.py) | Console-specific settings (`ConsoleSettings`) reading from `.env.console` |
 | [`console.py`](../packages/langgraph-fabric-console/src/langgraph_fabric_console/console.py) | Interactive terminal surface with streaming |
 | [`main.py`](../packages/langgraph-fabric-console/src/langgraph_fabric_console/main.py) | Console entrypoint (`langgraph-fabric-console` script) |
 
@@ -61,13 +63,14 @@ Interactive terminal surface with streaming responses.
 
 Source: [`packages/langgraph-fabric-m365/`](../packages/langgraph-fabric-m365/)
 
-Hosted adapter for Teams and Copilot Chat via the M365 Agents SDK.
+M365 adapter for Teams and Copilot Chat via the M365 Agents SDK.
 
 | Module | Purpose |
 | --- | --- |
-| [`app.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/app.py) | Hosted M365 adapter bridge and route wiring |
-| [`oauth.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py) | Hosted OAuth card flow, magic code handling, and hosted token resolution |
-| [`runtime.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/runtime.py) | Hosted runtime environment and SDK configuration builders |
+| [`config.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/config.py) | M365-specific settings (`M365Settings`) reading from `.env.m365` |
+| [`app.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/app.py) | M365 adapter bridge and route wiring |
+| [`oauth.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py) | M365 OAuth card flow, magic code handling, and M365 token resolution |
+| [`runtime.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/runtime.py) | M365 runtime environment and SDK configuration builders |
 | [`main.py`](../packages/langgraph-fabric-m365/src/langgraph_fabric_m365/main.py) | M365 adapter entrypoint (`langgraph-fabric-m365` script) |
 
 ## Dependency rules

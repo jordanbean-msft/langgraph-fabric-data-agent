@@ -1,16 +1,16 @@
-"""Unit tests for the M365 hosted app handlers (app.py)."""
+"""Unit tests for the M365 app handlers (app.py)."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from langgraph_fabric_core.core.config import AppSettings
-from langgraph_fabric_m365.app import HISTORY_KEY, create_hosted_app
+from langgraph_fabric_m365.app import HISTORY_KEY, create_m365_app
+from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import PENDING_PROMPT_KEY
 from microsoft_agents.activity import ActivityTypes
 
 
-def _make_settings(**overrides) -> AppSettings:
+def _make_settings(**overrides) -> M365Settings:
     base = {
         "azure_openai_endpoint": "https://example.services.ai.azure.com/api/projects/demo",
         "azure_openai_deployment_name": "gpt-5.4",
@@ -35,7 +35,7 @@ def _make_settings(**overrides) -> AppSettings:
         "fabric_oauth_connection_name": "FabricOAuth2",
     }
     base.update(overrides)
-    return AppSettings.model_construct(**base)
+    return M365Settings.model_construct(**base)
 
 
 class _FakeAgentApp:
@@ -99,11 +99,11 @@ async def test_message_handler_calls_orchestrator_and_sends_response(
     orchestrator.run = AsyncMock(return_value="Here is the answer")
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     message_handler = agent_app._handlers["message"]
 
     context = SimpleNamespace(
@@ -121,7 +121,7 @@ async def test_message_handler_calls_orchestrator_and_sends_response(
     orchestrator.run.assert_awaited_once()
     call_kwargs = orchestrator.run.await_args.kwargs
     assert call_kwargs["prompt"] == "What is the answer?"
-    assert call_kwargs["auth_mode"] == "hosted"
+    assert call_kwargs["auth_mode"] == "m365"
     assert call_kwargs["user_id"] == "user-1"
     assert call_kwargs["fabric_user_token"] == "fabric-token"
     context.send_activity.assert_awaited_with("Here is the answer")
@@ -137,11 +137,11 @@ async def test_message_handler_does_not_call_orchestrator_when_no_token(
     orchestrator.run = AsyncMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value=None),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     message_handler = agent_app._handlers["message"]
 
     context = SimpleNamespace(
@@ -167,11 +167,11 @@ async def test_message_handler_stores_conversation_history(
     orchestrator.run = AsyncMock(return_value="Answer text")
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     message_handler = agent_app._handlers["message"]
 
     context = SimpleNamespace(
@@ -203,11 +203,11 @@ async def test_message_handler_uses_pending_prompt_after_magic_code(
     orchestrator.run = AsyncMock(return_value="Response to pending")
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     message_handler = agent_app._handlers["message"]
 
     state = _FakeState()
@@ -240,11 +240,11 @@ async def test_message_handler_sends_completion_after_sign_in_with_pending_promp
     orchestrator.run = AsyncMock(return_value="Response")
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     message_handler = agent_app._handlers["message"]
 
     state = _FakeState()
@@ -276,11 +276,11 @@ async def test_message_handler_notifies_user_when_magic_code_fails(
     orchestrator.run = AsyncMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value=None),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     message_handler = agent_app._handlers["message"]
 
     context = SimpleNamespace(
@@ -311,11 +311,11 @@ async def test_message_handler_sends_sign_in_prompt_when_no_token_and_no_magic_c
     orchestrator.run = AsyncMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_hosted_user_token",
+        "langgraph_fabric_m365.app._get_m365_user_token",
         AsyncMock(return_value=None),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     message_handler = agent_app._handlers["message"]
 
     state = _FakeState()
@@ -347,7 +347,7 @@ async def test_invoke_handler_sends_200_response_for_token_exchange(
         AsyncMock(),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     invoke_handler = agent_app._handlers["invoke"]
 
     context = SimpleNamespace(
@@ -376,7 +376,7 @@ async def test_invoke_handler_sends_200_response_for_verify_state(
         AsyncMock(),
     )
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     invoke_handler = agent_app._handlers["invoke"]
 
     context = SimpleNamespace(
@@ -400,7 +400,7 @@ async def test_invoke_handler_sends_200_response_for_unknown_invoke(
     settings = _make_settings()
     orchestrator = MagicMock()
 
-    agent_app = await create_hosted_app(settings, orchestrator)
+    agent_app = await create_m365_app(settings, orchestrator)
     invoke_handler = agent_app._handlers["invoke"]
 
     context = SimpleNamespace(

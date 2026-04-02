@@ -1,13 +1,14 @@
-"""Hosted OAuth helpers for sign-in cards and token redemption."""
+"""M365 OAuth helpers for sign-in cards and token redemption."""
 
 import logging
 import re
 from typing import Any, Final
 
 from aiohttp.client_exceptions import ClientResponseError
-from langgraph_fabric_core.core.config import AppSettings
 from microsoft_agents.activity import Activity, ActivityTypes, TokenExchangeState
 from microsoft_agents.hosting.core import TurnState
+
+from langgraph_fabric_m365.config import M365Settings
 
 logger = logging.getLogger(__name__)
 
@@ -177,15 +178,15 @@ async def _disable_signin_card(
         logger.debug("Unable to update sign-in card to disabled state")
 
 
-async def _get_hosted_user_token(
+async def _get_m365_user_token(
     context: Any,
     state: TurnState,
-    settings: AppSettings,
+    settings: M365Settings,
     user_id: str,
     channel_id: str | None,
     magic_code: str | None = None,
 ) -> str | None:
-    """Get a hosted user token, or prompt sign-in with an adaptive card when needed."""
+    """Get an M365 user token, or prompt sign-in with an adaptive card when needed."""
     user_token_client = context.turn_state.get(context.adapter.USER_TOKEN_CLIENT_KEY)
     if not user_token_client or not channel_id:
         return None
@@ -209,7 +210,7 @@ async def _get_hosted_user_token(
         # Bot Service returns 404 when no token/connection is available for this channel+user.
         if exc.status == 404:
             logger.info(
-                "No hosted user token available",
+                "No M365 user token available",
                 extra={
                     "channel_id": channel_id,
                     "user_id": user_id,
@@ -218,7 +219,7 @@ async def _get_hosted_user_token(
             )
         else:
             logger.warning(
-                "Hosted user token lookup failed",
+                "M365 user token lookup failed",
                 extra={
                     "status": exc.status,
                     "channel_id": channel_id,
@@ -227,7 +228,7 @@ async def _get_hosted_user_token(
             )
     except ValueError:
         logger.info(
-            "Hosted user token lookup skipped due to invalid context",
+            "M365 user token lookup skipped due to invalid context",
             extra={"channel_id": channel_id, "user_id": user_id},
         )
 
@@ -279,7 +280,7 @@ async def _get_hosted_user_token(
 
     except (AttributeError, ClientResponseError, RuntimeError, TypeError, ValueError):
         logger.warning(
-            "Failed to get sign-in resource for hosted OAuth flow",
+            "Failed to get sign-in resource for M365 OAuth flow",
             extra={"channel_id": channel_id, "user_id": user_id},
         )
 

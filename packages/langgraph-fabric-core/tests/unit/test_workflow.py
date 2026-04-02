@@ -161,9 +161,9 @@ async def test_build_graph_passes_auth_state_through_messages() -> None:
     mock_llm, _ = _make_chat_model(direct_response="ok")
     graph = build_graph(mock_llm, _make_simple_tool())
 
-    state = _make_state(auth_mode="hosted", user_id="hosted-user-123", fabric_user_token="tok-abc")
+    state = _make_state(auth_mode="m365", user_id="m365-user-123", fabric_user_token="tok-abc")
     result = await graph.ainvoke(state)
 
-    assert result["auth_mode"] == "hosted"
-    assert result["user_id"] == "hosted-user-123"
+    assert result["auth_mode"] == "m365"
+    assert result["user_id"] == "m365-user-123"
     assert result["fabric_user_token"] == "tok-abc"

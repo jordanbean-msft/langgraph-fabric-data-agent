@@ -1,4 +1,4 @@
-"""M365 Agents SDK hosted bridge for Teams and Copilot Chat."""
+"""M365 Agents SDK adapter bridge for Teams and Copilot Chat."""
 
 from langchain_core.messages import (
     AIMessage,
@@ -7,7 +7,6 @@ from langchain_core.messages import (
     messages_from_dict,
     messages_to_dict,
 )
-from langgraph_fabric_core.core.config import AppSettings
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from microsoft_agents.activity import Activity, ActivityTypes
 from microsoft_agents.authentication.msal import MsalConnectionManager
@@ -20,31 +19,32 @@ from microsoft_agents.hosting.core import (
     TurnState,
 )
 
+from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import (
     PENDING_PROMPT_KEY,
     _disable_signin_card,
     _extract_magic_code,
-    _get_hosted_user_token,
+    _get_m365_user_token,
     _state_delete,
     _state_get,
     _state_set,
 )
 from langgraph_fabric_m365.runtime import (
-    _build_hosted_environment,
-    _build_hosted_sdk_configuration,
+    _build_m365_environment,
+    _build_m365_sdk_configuration,
 )
 
 HISTORY_KEY = "history"
 
 
-async def create_hosted_app(
-    settings: AppSettings,
+async def create_m365_app(
+    settings: M365Settings,
     orchestrator: AgentOrchestrator,
 ) -> AgentApplication[TurnState]:
-    """Create hosted adapter plumbing that can be wired to Teams/Copilot Chat."""
-    hosted_env = _build_hosted_environment(settings)
-    hosted_sdk_configuration = _build_hosted_sdk_configuration(settings)
-    runtime_configuration = {**hosted_env, **hosted_sdk_configuration}
+    """Create M365 adapter plumbing that can be wired to Teams/Copilot Chat."""
+    m365_env = _build_m365_environment(settings)
+    m365_sdk_configuration = _build_m365_sdk_configuration(settings)
+    runtime_configuration = {**m365_env, **m365_sdk_configuration}
 
     storage = MemoryStorage()
     connection_manager = MsalConnectionManager(**runtime_configuration)
@@ -66,14 +66,14 @@ async def create_hosted_app(
     @agent_app.activity("message")
     async def handle_message(context, state: TurnState):
         text = getattr(context.activity, "text", "")
-        user_id = getattr(getattr(context.activity, "from_property", None), "id", "hosted-user")
+        user_id = getattr(getattr(context.activity, "from_property", None), "id", "m365-user")
         channel_id = getattr(context.activity, "channel_id", None)
         magic_code = _extract_magic_code(text)
 
         if not magic_code and text.strip():
             _state_set(state, PENDING_PROMPT_KEY, text)
 
-        fabric_user_token = await _get_hosted_user_token(
+        fabric_user_token = await _get_m365_user_token(
             context=context,
             state=state,
             settings=settings,
@@ -105,8 +105,8 @@ async def create_hosted_app(
 
         response = await orchestrator.run(
             prompt=prompt,
-            channel="hosted",
-            auth_mode="hosted",
+            channel="m365",
+            auth_mode="m365",
             user_id=user_id,
             fabric_user_token=fabric_user_token,
             history=history,

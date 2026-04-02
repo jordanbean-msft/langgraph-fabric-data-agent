@@ -3,7 +3,7 @@
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from langchain_openai import AzureChatOpenAI
 
-from langgraph_fabric_core.core.config import AppSettings
+from langgraph_fabric_core.core.config import CoreSettings
 
 _FOUNDRY_PROJECT_API_VERSION = "2025-11-15-preview"
 
@@ -12,7 +12,7 @@ def _is_foundry_project_endpoint(endpoint: str) -> bool:
     return "/api/projects/" in endpoint
 
 
-def _resolve_api_version(settings: AppSettings) -> str:
+def _resolve_api_version(settings: CoreSettings) -> str:
     if not _is_foundry_project_endpoint(settings.azure_openai_endpoint):
         return settings.azure_openai_api_version
 
@@ -22,14 +22,14 @@ def _resolve_api_version(settings: AppSettings) -> str:
     return settings.azure_openai_api_version
 
 
-def _use_previous_response_id(settings: AppSettings) -> bool:
+def _use_previous_response_id(settings: CoreSettings) -> bool:
     """Return whether response ID chaining should be enabled."""
     # LangGraph tool loops send function-call outputs as message inputs; for
     # Foundry project endpoints this is more reliable without response ID chaining.
     return not _is_foundry_project_endpoint(settings.azure_openai_endpoint)
 
 
-def create_chat_model(settings: AppSettings) -> AzureChatOpenAI:
+def create_chat_model(settings: CoreSettings) -> AzureChatOpenAI:
     """Create the chat model used by LangGraph."""
     credential = DefaultAzureCredential()
     token_provider = get_bearer_token_provider(

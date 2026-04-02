@@ -12,7 +12,7 @@ The `langgraph-fabric-console` package is an interactive terminal client for the
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) installed.
 - An Azure CLI session (`az login`) with an account that has the Fabric permissions described in the [app registration guide](app-registration.md).
-- A `.env` file at the repository root with the required environment variables (see [Environment variables](#environment-variables) below).
+- A `.env.console` file at the repository root with the required environment variables (see [Environment variables](#environment-variables) below).
 
 ## Authentication setup
 
@@ -61,7 +61,7 @@ Conversation history is maintained for the duration of the terminal session. Eac
 
 ## Environment variables
 
-All settings are read from `.env` via the core settings model. The following variables are required to run the console:
+All settings are read from `.env.console` via the console settings model. The following variables are required to run the console:
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
@@ -73,4 +73,4 @@ All settings are read from `.env` via the core settings model. The following var
 | `FABRIC_DATA_AGENT_TIMEOUT_SECONDS` | No | `120` | Maximum seconds to wait for an MCP response |
 | `LOG_LEVEL` | No | `INFO` | Root log level |
 
-See [.env.example](../.env.example) for a full template.
+See [.env.console.example](../.env.console.example) for a full template.

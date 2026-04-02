@@ -7,7 +7,7 @@ import pytest
 
 @pytest.fixture()
 def fake_settings() -> MagicMock:
-    """Minimal AppSettings-compatible mock for tests that do not need real env vars."""
+    """Minimal ApiSettings-compatible mock for tests that do not need real env vars."""
     settings = MagicMock()
     settings.microsoft_app_id = "test-app-id"
     settings.microsoft_app_password = "test-secret"

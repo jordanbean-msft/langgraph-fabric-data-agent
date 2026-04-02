@@ -1,10 +1,9 @@
-"""Hosted entrypoint for Teams/Copilot Chat adapter."""
+"""M365 entrypoint for Teams/Copilot Chat adapter."""
 
 import asyncio
 import logging
 
 from aiohttp.web import Application, Request, Response, run_app
-from langgraph_fabric_core.core.config import get_settings
 from langgraph_fabric_core.core.logging import configure_logging
 from langgraph_fabric_core.fabric.auth import FabricTokenProvider
 from langgraph_fabric_core.fabric.mcp_client import FabricMcpClient
@@ -14,18 +13,19 @@ from microsoft_agents.hosting.aiohttp import jwt_authorization_middleware, start
 from microsoft_agents.hosting.core import AgentApplication, TurnState
 from microsoft_agents.hosting.core.authorization import AgentAuthConfiguration
 
-from langgraph_fabric_m365.app import create_hosted_app
+from langgraph_fabric_m365.app import create_m365_app
+from langgraph_fabric_m365.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 
-async def _build_hosted_agent_app() -> AgentApplication[TurnState]:
+async def _build_m365_agent_app() -> AgentApplication[TurnState]:
     settings = get_settings()
     token_provider = FabricTokenProvider(settings)
     client = FabricMcpClient(settings, token_provider)
     model = create_chat_model(settings)
     orchestrator = AgentOrchestrator(model, client)
-    return await create_hosted_app(settings, orchestrator)
+    return await create_m365_app(settings, orchestrator)
 
 
 def _resolve_agent_auth_configuration(
@@ -70,11 +70,11 @@ def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_level_override)
 
-    agent_app = asyncio.run(_build_hosted_agent_app())
+    agent_app = asyncio.run(_build_m365_agent_app())
     server_app = create_server_app(agent_app, settings)
 
     logger.info(
-        "Hosted adapter initialized and listening",
+        "M365 adapter initialized and listening",
         extra={"port": settings.port, "path": "/api/messages"},
     )
     run_app(server_app, host="0.0.0.0", port=settings.port)

@@ -14,7 +14,7 @@ applyTo: "packages/**/*.py"
 
 ## Runtime behavior
 
-* Route all environment reads through the central settings model.
+* Route all environment reads through the package-specific settings model (e.g., `ApiSettings`, `ConsoleSettings`, `M365Settings`).
 * Emit logs with stable structured context.
 * Favor async interfaces for network-bound operations.
 * For this sample, avoid persistence or background schedulers.

@@ -28,10 +28,10 @@ def test_main_starts_server_on_configured_port(monkeypatch) -> None:
     monkeypatch.setattr(main_m365, "get_settings", lambda: settings)
     monkeypatch.setattr(main_m365, "configure_logging", lambda *_: None)
 
-    async def _fake_build_hosted_agent_app() -> SimpleNamespace:
+    async def _fake_build_m365_agent_app() -> SimpleNamespace:
         return agent_app
 
-    monkeypatch.setattr(main_m365, "_build_hosted_agent_app", _fake_build_hosted_agent_app)
+    monkeypatch.setattr(main_m365, "_build_m365_agent_app", _fake_build_m365_agent_app)
 
     run_app_calls: list[tuple[object, str, int]] = []
 

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import CredentialUnavailableError
-from langgraph_fabric_core.core.config import AppSettings
+from langgraph_fabric_core.core.config import CoreSettings
 from langgraph_fabric_core.fabric.auth import AuthContext, FabricTokenProvider
 
 
@@ -13,13 +13,21 @@ def settings_fixture_data(monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME", "gpt-5.4")
     monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2025-11-15-preview")
     monkeypatch.setenv("FABRIC_DATA_AGENT_MCP_URL", "https://api.fabric.microsoft.com/v1/mcp/demo")
-    return AppSettings()
+    return CoreSettings()
 
 
 @pytest.mark.asyncio
-async def test_hosted_mode_requires_token(settings_fixture):
+async def test_m365_mode_requires_token(settings_fixture):
     provider = FabricTokenProvider(settings_fixture)
-    context = AuthContext(mode="hosted", user_id="u1", hosted_user_token=None)
+    context = AuthContext(mode="m365", user_id="u1", user_token=None)
+    with pytest.raises(ValueError):
+        await provider.get_token(context)
+
+
+@pytest.mark.asyncio
+async def test_api_mode_requires_token(settings_fixture):
+    provider = FabricTokenProvider(settings_fixture)
+    context = AuthContext(mode="api", user_id="u1", user_token=None)
     with pytest.raises(ValueError):
         await provider.get_token(context)
 

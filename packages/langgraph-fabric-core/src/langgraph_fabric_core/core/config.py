@@ -1,16 +1,18 @@
-"""Application configuration models."""
-
-from functools import lru_cache
+"""Core application configuration shared by all client packages."""
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class AppSettings(BaseSettings):
-    """Centralized environment-backed settings."""
+class CoreSettings(BaseSettings):
+    """Shared environment-backed settings for Azure OpenAI, Fabric MCP, and logging.
+
+    Each client package (console, api, m365) inherits from this class and
+    specifies its own env_file and any additional package-specific fields.
+    """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=None,
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -36,32 +38,9 @@ class AppSettings(BaseSettings):
         alias="FABRIC_DATA_AGENT_POLL_INTERVAL_SECONDS",
     )
 
+    # Optional Microsoft app registration fields used for local device-code fallback.
     microsoft_app_id: str = Field(default="", alias="MICROSOFT_APP_ID")
-    microsoft_app_password: str = Field(default="", alias="MICROSOFT_APP_PASSWORD")
     microsoft_tenant_id: str = Field(default="", alias="MICROSOFT_TENANT_ID")
-    fabric_oauth_connection_name: str = Field(default="FabricOAuth2", alias="FABRIC_OAUTH_CONNECTION_NAME")
-
-    connections_service_connection_id: str = Field(default="", alias="CONNECTIONS__SERVICE_CONNECTION__ID")
-    connections_service_connection_name: str = Field(
-        default="",
-        alias="CONNECTIONS__SERVICE_CONNECTION__NAME",
-    )
-    connections_service_connection_client_id: str = Field(
-        default="",
-        alias="CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID",
-    )
-    connections_service_connection_tenant_id: str = Field(
-        default="",
-        alias="CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID",
-    )
-    connections_service_connection_auth_type: str = Field(
-        default="",
-        alias="CONNECTIONS__SERVICE_CONNECTION__SETTINGS__AUTHTYPE",
-    )
-    connections_service_connection_client_secret: str = Field(
-        default="",
-        alias="CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET",
-    )
 
     @field_validator("log_level_override", mode="before")
     @classmethod
@@ -70,9 +49,3 @@ class AppSettings(BaseSettings):
         if isinstance(value, str) and value.strip() == "":
             return None
         return value
-
-
-@lru_cache(maxsize=1)
-def get_settings() -> AppSettings:
-    """Return cached settings."""
-    return AppSettings()

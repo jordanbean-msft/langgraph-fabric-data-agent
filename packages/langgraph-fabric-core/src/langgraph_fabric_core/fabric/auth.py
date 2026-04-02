@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import CredentialUnavailableError, DefaultAzureCredential, DeviceCodeCredential
 
-from langgraph_fabric_core.core.config import AppSettings
+from langgraph_fabric_core.core.config import CoreSettings
 
 
 @dataclass(slots=True)
@@ -14,15 +14,15 @@ class AuthContext:
 
     mode: str
     user_id: str
-    hosted_user_token: str | None = None
+    user_token: str | None = None
 
 
 class FabricTokenProvider:
-    """Resolve Fabric tokens for local and hosted scenarios."""
+    """Resolve Fabric tokens for local and m365/api scenarios."""
 
     def __init__(
         self,
-        settings: AppSettings,
+        settings: CoreSettings,
         default_credential: DefaultAzureCredential | None = None,
         device_code_credential: DeviceCodeCredential | None = None,
     ):
@@ -35,10 +35,12 @@ class FabricTokenProvider:
 
     async def get_token(self, context: AuthContext) -> str:
         """Return an access token for Fabric API."""
-        if context.mode == "hosted":
-            if not context.hosted_user_token:
-                raise ValueError("Hosted mode requires a Bot Service user token")
-            return context.hosted_user_token
+        if context.mode != "local":
+            if not context.user_token:
+                raise ValueError(
+                    f"Auth mode '{context.mode}' requires a pre-provided Fabric user token"
+                )
+            return context.user_token
 
         try:
             token = self._default_credential.get_token(self._settings.fabric_data_agent_scope)
