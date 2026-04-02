@@ -89,6 +89,8 @@ uv run pytest tests/integration
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Per-package module breakdown and dependency rules |
 | [docs/api-guide.md](docs/api-guide.md) | API authentication setup and streaming endpoint usage |
+| [docs/console-guide.md](docs/console-guide.md) | Console authentication setup and interactive terminal usage |
+| [docs/m365-guide.md](docs/m365-guide.md) | Teams and Copilot Chat hosted adapter setup, OAuth sign-in flow, and environment reference |
 | [docs/app-registration.md](docs/app-registration.md) | Entra app registration reference, API permissions, and environment variable mapping |
 | [docs/azure-bot-service.md](docs/azure-bot-service.md) | Azure Bot Service setup, secret rotation, OAuth connection, and app package |
 | [docs/vscode-tasks.md](docs/vscode-tasks.md) | VS Code task reference and recommended flows |

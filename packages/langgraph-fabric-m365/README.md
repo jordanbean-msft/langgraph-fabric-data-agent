@@ -30,5 +30,5 @@ The hosted adapter:
 
 State helpers in `oauth.py` wrap TurnState access for SDK compatibility.
 
-See the [architecture guide](../../docs/architecture.md) and [Azure Bot Service guide](../../docs/azure-bot-service.md) for full details.
+See the [architecture guide](../../docs/architecture.md), [Teams and Copilot Chat guide](../../docs/m365-guide.md), and [Azure Bot Service guide](../../docs/azure-bot-service.md) for full details.
 

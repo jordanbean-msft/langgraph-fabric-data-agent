@@ -16,5 +16,5 @@ Streams agent responses directly to the terminal.
 uv run langgraph-fabric-console
 ```
 
-See the [architecture guide](../../docs/architecture.md) for full details.
+See the [architecture guide](../../docs/architecture.md) and [console guide](../../docs/console-guide.md) for full details.
 
