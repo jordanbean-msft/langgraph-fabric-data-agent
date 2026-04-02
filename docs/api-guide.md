@@ -92,15 +92,13 @@ The server starts on port `8000` by default. Override it with `PORT=<number>` in
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `prompt` | `string` | Yes | — | The user's question or instruction |
-| `user_id` | `string` | No | `"local-user"` | An identifier for the requesting user, used for correlation logging |
-| `fabric_user_token` | `string` | No | `null` | Fabric-scoped access token obtained by your application on behalf of the user. When provided, the token is forwarded directly to the Fabric Data Agent. |
+| `fabric_user_token` | `string` | No | `null` | Fabric-scoped access token obtained by your application on behalf of the user. When provided, the token is forwarded directly to the Fabric Data Agent and the user identity is extracted from the JWT claims for log correlation. |
 
 **Example request body:**
 
 ```json
 {
   "prompt": "What are the top 10 sales by region?",
-  "user_id": "alice@example.com",
   "fabric_user_token": "<fabric-scoped-access-token>"
 }
 ```
@@ -132,7 +130,6 @@ import httpx
 url = "http://localhost:8000/chat/stream"
 payload = {
     "prompt": "What are the top 10 sales by region?",
-    "user_id": "alice@example.com",
     "fabric_user_token": fabric_user_token,  # obtained via auth code / OBO flow
 }
 
@@ -158,7 +155,6 @@ async def stream_chat(prompt: str, fabric_user_token: str) -> None:
     url = "http://localhost:8000/chat/stream"
     payload = {
         "prompt": prompt,
-        "user_id": "alice@example.com",
         "fabric_user_token": fabric_user_token,  # obtained via auth code / OBO flow
     }
 
@@ -187,7 +183,6 @@ async function streamChat(prompt: string, fabricUserToken: string): Promise<void
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       prompt,
-      user_id: "alice@example.com",
       fabric_user_token: fabricUserToken, // obtained via auth code / OBO flow
     }),
   });
@@ -226,7 +221,6 @@ curl -s -N \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "What are the top 10 sales by region?",
-    "user_id": "alice@example.com",
     "fabric_user_token": "<fabric-scoped-access-token>"
   }' \
 | while IFS= read -r line; do

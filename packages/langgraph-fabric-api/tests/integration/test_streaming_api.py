@@ -20,7 +20,7 @@ def test_streaming_endpoint(monkeypatch):
     client = TestClient(api_module.app)
     response = client.post(
         "/chat/stream",
-        json={"prompt": "hello", "user_id": "u1"},
+        json={"prompt": "hello"},
     )
     assert response.status_code == 200
     assert "chunk-1" in response.text
