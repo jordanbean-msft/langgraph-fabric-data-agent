@@ -93,8 +93,7 @@ The server starts on port `8000` by default. Override it with `PORT=<number>` in
 | --- | --- | --- | --- | --- |
 | `prompt` | `string` | Yes | — | The user's question or instruction |
 | `user_id` | `string` | No | `"local-user"` | An identifier for the requesting user, used for correlation logging |
-| `auth_mode` | `string` | No | `"local"` | Set to `"hosted"` when providing a `fabric_user_token` |
-| `fabric_user_token` | `string` | No | `null` | Fabric-scoped access token obtained by your application on behalf of the user |
+| `fabric_user_token` | `string` | No | `null` | Fabric-scoped access token obtained by your application on behalf of the user. When provided, the token is forwarded directly to the Fabric Data Agent. |
 
 **Example request body:**
 
@@ -102,7 +101,6 @@ The server starts on port `8000` by default. Override it with `PORT=<number>` in
 {
   "prompt": "What are the top 10 sales by region?",
   "user_id": "alice@example.com",
-  "auth_mode": "hosted",
   "fabric_user_token": "<fabric-scoped-access-token>"
 }
 ```
@@ -135,7 +133,6 @@ url = "http://localhost:8000/chat/stream"
 payload = {
     "prompt": "What are the top 10 sales by region?",
     "user_id": "alice@example.com",
-    "auth_mode": "hosted",
     "fabric_user_token": fabric_user_token,  # obtained via auth code / OBO flow
 }
 
@@ -162,7 +159,6 @@ async def stream_chat(prompt: str, fabric_user_token: str) -> None:
     payload = {
         "prompt": prompt,
         "user_id": "alice@example.com",
-        "auth_mode": "hosted",
         "fabric_user_token": fabric_user_token,  # obtained via auth code / OBO flow
     }
 
@@ -192,7 +188,6 @@ async function streamChat(prompt: string, fabricUserToken: string): Promise<void
     body: JSON.stringify({
       prompt,
       user_id: "alice@example.com",
-      auth_mode: "hosted",
       fabric_user_token: fabricUserToken, // obtained via auth code / OBO flow
     }),
   });
@@ -232,7 +227,6 @@ curl -s -N \
   -d '{
     "prompt": "What are the top 10 sales by region?",
     "user_id": "alice@example.com",
-    "auth_mode": "hosted",
     "fabric_user_token": "<fabric-scoped-access-token>"
   }' \
 | while IFS= read -r line; do

@@ -29,7 +29,6 @@ app = FastAPI(title="LangGraph Fabric Data Agent")
 class ChatRequest(BaseModel):
     prompt: str
     user_id: str = "local-user"
-    auth_mode: str = "local"
     fabric_user_token: str | None = None
 
 
@@ -41,12 +40,13 @@ async def health() -> dict[str, str]:
 @app.post("/chat/stream")
 async def chat_stream(request: ChatRequest) -> StreamingResponse:
     orchestrator = get_orchestrator()
+    auth_mode = "hosted" if request.fabric_user_token else "local"
 
     async def event_stream() -> AsyncIterator[bytes]:
         async for chunk in orchestrator.stream(
             prompt=request.prompt,
             channel="api",
-            auth_mode=request.auth_mode,
+            auth_mode=auth_mode,
             user_id=request.user_id,
             fabric_user_token=request.fabric_user_token,
         ):
