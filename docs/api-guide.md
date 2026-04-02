@@ -6,66 +6,80 @@ ms.date: 2026-04-01
 
 # API Guide
 
-The `langgraph-fabric-api` package is a standalone FastAPI server that exposes the Fabric Data Agent over HTTP. It accepts a text prompt and a delegated user token, then streams the agent's response back to the caller using Server-Sent Events (SSE).
+The `langgraph-fabric-api` package is a standalone FastAPI server that exposes the Fabric Data Agent over HTTP. Your application authenticates its users, presents the resulting Bearer token to the API, and streams the agent's response back using Server-Sent Events (SSE).
 
-This guide is for **developers building applications** that integrate with the Fabric Data Agent API. Your application is responsible for authenticating the end user and obtaining a Fabric-scoped access token, which is then forwarded to the API with each request.
+This guide is for **developers building applications** that integrate with the Fabric Data Agent API.
 
 ## Prerequisites
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) installed.
-- An Entra ID app registration for your client application with the Fabric API permission — see the [app registration guide](app-registration.md).
+- An Entra ID app registration for this API server (see the [app registration guide](app-registration.md)).
 - A `.env` file at the repository root with the required server-side environment variables (see [Environment variables](#environment-variables) below).
 
-## Authentication
+## Authentication overview
 
-The API itself is **unauthenticated at the transport layer** (no bearer token is required to reach the `/chat/stream` endpoint). Authentication is instead user-delegated: your application acquires a Fabric access token on behalf of the signed-in user and passes it in the request body.
+The authentication flow has two halves: one handled by your **client application** and one handled by the **API server** internally.
 
-### How it works
+```
+Client App          API Server           Microsoft Entra ID       Fabric Data Agent
+    │                    │                       │                       │
+    │ 1. Auth Code flow  │                       │                       │
+    │──────────────────────────────────────────>│                       │
+    │ 2. User JWT        │                       │                       │
+    │<──────────────────────────────────────────│                       │
+    │                    │                       │                       │
+    │ 3. POST /chat/stream                       │                       │
+    │   Authorization: Bearer <user-jwt>         │                       │
+    │──────────────────>│                        │                       │
+    │                    │ 4. OBO exchange        │                       │
+    │                    │──────────────────────>│                       │
+    │                    │ 5. Fabric-scoped token │                       │
+    │                    │<──────────────────────│                       │
+    │                    │                        │  6. MCP call with    │
+    │                    │──────────────────────────────────────────────>│
+    │                    │<──────────────────────────────────────────────│
+    │ 7. SSE stream      │                        │                       │
+    │<──────────────────│                         │                       │
+```
 
-1. **Your application** authenticates the end user with the **OAuth 2.0 Authorization Code flow** against Microsoft Entra ID (Azure AD).
-2. **Your application** requests an access token with the Fabric API scope (`https://api.fabric.microsoft.com/.default`). If your backend receives a token for your own API audience, use the [On-Behalf-Of (OBO) flow](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) to exchange it for a Fabric-scoped token.
-3. **Your application** passes the resulting `fabric_user_token` to every `/chat/stream` call.
-4. **The API** forwards that token directly to the Fabric Data Agent MCP endpoint — no server-side credential is needed.
+### Client side: OAuth 2.0 Authorization Code flow
 
-### Entra ID app registration
+Your application authenticates the end user with the **OAuth 2.0 Authorization Code flow** against Microsoft Entra ID. The audience for the token must be this API server's app registration (not the Fabric API directly). Use the [Microsoft Authentication Library (MSAL)](https://learn.microsoft.com/entra/identity-platform/msal-overview) or any OIDC-compliant library.
 
-Register a client application in Entra ID with the following settings:
+The scope to request is the API's exposed scope:
+
+```
+api://<YOUR_APP_CLIENT_ID>/access_as_user
+```
+
+Your application then includes the resulting JWT in every request to this API:
+
+```
+Authorization: Bearer <user-jwt>
+```
+
+### Server side: On-Behalf-Of (OBO) flow
+
+The API server validates the incoming JWT and performs an [On-Behalf-Of exchange](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) internally to obtain a Fabric-scoped access token:
+
+1. The server uses its own confidential client credentials (`MICROSOFT_APP_ID` + `MICROSOFT_APP_PASSWORD`) to call Entra ID.
+2. The incoming user JWT is supplied as `user_assertion`.
+3. Entra ID returns a new token scoped to `https://api.fabric.microsoft.com/.default`.
+4. That Fabric token is forwarded to the Fabric Data Agent — the caller never sees it.
+
+### Entra ID app registration for the API server
+
+Register the API server as a confidential application in Entra ID. Required settings:
 
 | Property | Value |
 | --- | --- |
 | Supported account types | Single tenant (`AzureADMyOrg`) or multi-tenant as needed |
-| Platform | Web, SPA, or mobile/desktop depending on your client type |
-| Redirect URI | Your application's OAuth callback URI |
-| API permission | `Delegated` — `https://api.fabric.microsoft.com/` → `Item.Read.All` (or the Fabric scope required by your Data Agent) |
+| Platform | Web |
+| Client secret | Required — stored in `MICROSOFT_APP_PASSWORD` |
+| Exposed API scope | `access_as_user` (or any name you choose) |
+| API permission | `Delegated` — `https://api.fabric.microsoft.com/` → `Item.Read.All` (the Fabric scope required by your Data Agent) |
 
-Grant admin consent for the Fabric API permission so users are not prompted individually.
-
-> [!NOTE]
-> The same Entra app used for the M365 / Teams integration can be reused here if it already has Fabric delegated permissions. See the [app registration guide](app-registration.md) for the full permission list.
-
-### Acquiring the token (Authorization Code flow)
-
-Use the [Microsoft Authentication Library (MSAL)](https://learn.microsoft.com/entra/identity-platform/msal-overview) or any OIDC-compliant library in your client application. The scope to request is:
-
-```
-https://api.fabric.microsoft.com/.default
-```
-
-Or, if using OBO from your own API backend:
-
-```python
-# MSAL Python — On-Behalf-Of flow
-app = msal.ConfidentialClientApplication(
-    client_id="<YOUR_CLIENT_ID>",
-    client_credential="<YOUR_CLIENT_SECRET>",
-    authority="https://login.microsoftonline.com/<YOUR_TENANT_ID>",
-)
-result = app.acquire_token_on_behalf_of(
-    user_assertion=incoming_user_token,
-    scopes=["https://api.fabric.microsoft.com/.default"],
-)
-fabric_user_token = result["access_token"]
-```
+See the [app registration guide](app-registration.md) for the full registration walkthrough.
 
 ## Start the server
 
@@ -73,10 +87,7 @@ fabric_user_token = result["access_token"]
 uv run langgraph-fabric-api
 ```
 
-The server starts on port `8000` by default. Override it with `PORT=<number>` in `.env`.
-
-> [!NOTE]
-> While user authentication is fully delegated to the calling application (no `az login` is needed), the server still requires Azure OpenAI credentials and the Fabric MCP URL to be configured in `.env`. See [Environment variables](#environment-variables) below.
+The server starts on port `8000` by default. Override with `PORT=<number>` in `.env`.
 
 ## Endpoints
 
@@ -89,17 +100,23 @@ The server starts on port `8000` by default. Override it with `PORT=<number>` in
 
 `POST /chat/stream`
 
-| Field | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `prompt` | `string` | Yes | — | The user's question or instruction |
-| `fabric_user_token` | `string` | No | `null` | Fabric-scoped access token obtained by your application on behalf of the user. When provided, the token is forwarded directly to the Fabric Data Agent and the user identity is extracted from the JWT claims for log correlation. |
+**Required header:**
+
+```
+Authorization: Bearer <user-jwt>
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `prompt` | `string` | Yes | The user's question or instruction |
 
 **Example request body:**
 
 ```json
 {
-  "prompt": "What are the top 10 sales by region?",
-  "fabric_user_token": "<fabric-scoped-access-token>"
+  "prompt": "What are the top 10 sales by region?"
 }
 ```
 
@@ -128,13 +145,13 @@ Chunks contain partial LLM output tokens and may also include tool-call progress
 import httpx
 
 url = "http://localhost:8000/chat/stream"
-payload = {
-    "prompt": "What are the top 10 sales by region?",
-    "fabric_user_token": fabric_user_token,  # obtained via auth code / OBO flow
+headers = {
+    "Authorization": f"Bearer {user_token}",  # JWT obtained via auth code flow
+    "Content-Type": "application/json",
 }
 
 with httpx.Client(timeout=120) as client:
-    with client.stream("POST", url, json=payload) as response:
+    with client.stream("POST", url, json={"prompt": "What are the top 10 sales by region?"}, headers=headers) as response:
         response.raise_for_status()
         for line in response.iter_lines():
             if line.startswith("data:"):
@@ -151,15 +168,15 @@ import asyncio
 import aiohttp
 
 
-async def stream_chat(prompt: str, fabric_user_token: str) -> None:
+async def stream_chat(prompt: str, user_token: str) -> None:
     url = "http://localhost:8000/chat/stream"
-    payload = {
-        "prompt": prompt,
-        "fabric_user_token": fabric_user_token,  # obtained via auth code / OBO flow
+    headers = {
+        "Authorization": f"Bearer {user_token}",  # JWT obtained via auth code flow
+        "Content-Type": "application/json",
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=120)) as resp:
+        async with session.post(url, json={"prompt": prompt}, headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as resp:
             resp.raise_for_status()
             async for line in resp.content:
                 text = line.decode().strip()
@@ -170,21 +187,20 @@ async def stream_chat(prompt: str, fabric_user_token: str) -> None:
                     print(chunk, end="", flush=True)
 
 
-asyncio.run(stream_chat("What are the top 10 sales by region?", fabric_user_token))
-# fabric_user_token is obtained via your application's auth code / OBO flow
+asyncio.run(stream_chat("What are the top 10 sales by region?", user_token))
 ```
 
 ## Example: JavaScript / TypeScript client using `fetch`
 
 ```typescript
-async function streamChat(prompt: string, fabricUserToken: string): Promise<void> {
+async function streamChat(prompt: string, userToken: string): Promise<void> {
   const response = await fetch("http://localhost:8000/chat/stream", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt,
-      fabric_user_token: fabricUserToken, // obtained via auth code / OBO flow
-    }),
+    headers: {
+      "Authorization": `Bearer ${userToken}`, // JWT obtained via auth code flow
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prompt }),
   });
 
   if (!response.ok || !response.body) {
@@ -209,8 +225,7 @@ async function streamChat(prompt: string, fabricUserToken: string): Promise<void
   }
 }
 
-streamChat("What are the top 10 sales by region?", fabricUserToken);
-// fabricUserToken is obtained via your application's auth code / OBO flow
+streamChat("What are the top 10 sales by region?", userToken);
 ```
 
 ## Example: `curl`
@@ -218,11 +233,9 @@ streamChat("What are the top 10 sales by region?", fabricUserToken);
 ```bash
 curl -s -N \
   -X POST http://localhost:8000/chat/stream \
+  -H "Authorization: Bearer <user-jwt>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "What are the top 10 sales by region?",
-    "fabric_user_token": "<fabric-scoped-access-token>"
-  }' \
+  -d '{"prompt": "What are the top 10 sales by region?"}' \
 | while IFS= read -r line; do
     [[ "$line" == "data: [DONE]" ]] && break
     [[ "$line" == data:* ]] && printf '%s' "${line#data: }"
@@ -239,9 +252,13 @@ All settings are read from `.env` via the core settings model. The following var
 | `AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME` | Yes | — | Chat model deployment name (e.g. `gpt-4o`) |
 | `AZURE_OPENAI_API_VERSION` | No | `2025-11-15-preview` | Azure OpenAI API version |
 | `FABRIC_DATA_AGENT_MCP_URL` | Yes | — | Fabric Data Agent MCP endpoint URL |
-| `FABRIC_DATA_AGENT_SCOPE` | No | `https://api.fabric.microsoft.com/.default` | OAuth scope the client should request |
+| `FABRIC_DATA_AGENT_SCOPE` | No | `https://api.fabric.microsoft.com/.default` | Fabric scope used in the OBO exchange |
+| `MICROSOFT_APP_ID` | Yes | — | Client ID of the API server's Entra app registration |
+| `MICROSOFT_APP_PASSWORD` | Yes | — | Client secret for the OBO exchange |
+| `MICROSOFT_TENANT_ID` | Yes | — | Entra tenant ID |
 | `FABRIC_DATA_AGENT_TIMEOUT_SECONDS` | No | `120` | Maximum seconds to wait for an MCP response |
 | `PORT` | No | `8000` | Port the server listens on |
 | `LOG_LEVEL` | No | `INFO` | Root log level |
 
 See [.env.example](../.env.example) for a full template.
+
