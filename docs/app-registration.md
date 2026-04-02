@@ -6,14 +6,14 @@ ms.date: 2026-04-01
 
 # App Registration
 
-The hosted adapter authenticates via the `bot-langgraph-fabric-data-agent` Entra ID app registration.
-Use the details below when configuring your `.env` file and Bot Service OAuth connection.
+The hosted adapter authenticates via an Entra ID app registration for the bot (for example, an app named `bot-langgraph-fabric-data-agent`).
+Use the template below when configuring your own app registration, `.env` file, and Bot Service OAuth connection. Replace the placeholder values with the details from your Entra ID app.
 
 | Property | Value |
 | --- | --- |
-| Display name | `bot-langgraph-fabric-data-agent` |
-| Application (client) ID | `3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae` |
-| Application ID URI | `api://botId-3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae` |
+| Display name (suggested) | `bot-langgraph-fabric-data-agent` |
+| Application (client) ID | `<YOUR_APP_CLIENT_ID>` |
+| Application ID URI | `api://botId-<YOUR_APP_CLIENT_ID>` |
 | Sign-in audience | Single tenant (`AzureADMyOrg`) |
 | Redirect URI | `https://token.botframework.com/.auth/web/redirect` |
 
@@ -47,7 +47,7 @@ All permissions are delegated (user context). Admin consent is required for the 
 The app exposes an `access_as_user` scope:
 
 ```text
-api://botId-3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae/access_as_user
+api://botId-<YOUR_APP_CLIENT_ID>/access_as_user
 ```
 
 Standard Microsoft Teams and Office client IDs are pre-authorized for this scope so users are not prompted for additional consent inside Teams or Copilot Chat.
@@ -68,11 +68,11 @@ Two secrets exist for this registration. Retrieve and rotate them using the Azur
 
 ```bash
 # List existing credentials
-az ad app credential list --id 3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae
+az ad app credential list --id <YOUR_APP_CLIENT_ID>
 
 # Add a new secret (append keeps existing secrets intact)
 az ad app credential reset \
-  --id 3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae \
+  --id <YOUR_APP_CLIENT_ID> \
   --append \
   --display-name langgraph-fabric-data-agent \
   --years 1
@@ -84,8 +84,8 @@ Copy the `password` value from the output and set it as `MICROSOFT_APP_PASSWORD`
 
 | `.env` variable | Value |
 | --- | --- |
-| `MICROSOFT_APP_ID` | `3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae` |
+| `MICROSOFT_APP_ID` | `<YOUR_APP_CLIENT_ID>` |
 | `MICROSOFT_APP_PASSWORD` | Client secret value from the registration |
 | `MICROSOFT_TENANT_ID` | Your Entra tenant ID |
-| `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID` | `3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae` |
+| `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID` | `<YOUR_APP_CLIENT_ID>` |
 | `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET` | Client secret value from the registration |

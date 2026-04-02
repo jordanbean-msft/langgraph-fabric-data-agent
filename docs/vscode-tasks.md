@@ -12,11 +12,13 @@ Open the task picker with **Terminal: Run Task** in VS Code, then choose one of 
 
 | Task | Purpose |
 | --- | --- |
-| `sync-venv` | Install and sync the project and dev dependencies with `uv sync --extra dev`. |
+| `sync-venv` | Install and sync the project and dev dependencies with `uv sync --all-packages --extra dev`. |
 | `lint` | Run Ruff across the repository. |
-| `test-unit` | Run the unit test suite with verbose output. |
-| `test-integration` | Run the integration test suite with verbose output. |
-| `test-all` | Run the full test suite. |
+| `test-core` | Run the `langgraph-fabric-core` test suite with verbose output. |
+| `test-api` | Run the `langgraph-fabric-api` test suite with verbose output. |
+| `test-console` | Run the `langgraph-fabric-console` test suite with verbose output. |
+| `test-m365` | Run the `langgraph-fabric-m365` test suite with verbose output. |
+| `test-all` | Run the full test suite across all packages. |
 | `run-api` | Start the FastAPI surface on the configured port as a background task. |
 | `run-console` | Start the interactive console surface. |
 | `run-hosted` | Start the hosted M365 adapter as a background task in a new terminal panel. |
@@ -44,7 +46,7 @@ The dev tunnel tasks prompt for these inputs:
 For a normal first-time local setup in VS Code:
 
 1. Run `sync-venv`.
-2. Run `lint` and `test-unit`.
+2. Run `lint` and `test-all` (or individual package tasks such as `test-core`, `test-api`).
 3. Run `run-console`, `run-api`, or `run-hosted` depending on the surface you want to test.
 
 For hosted Microsoft 365 testing with a dev tunnel:

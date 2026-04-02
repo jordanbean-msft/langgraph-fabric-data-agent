@@ -6,15 +6,15 @@ ms.date: 2026-04-01
 
 # Azure Bot Service
 
-This repository is currently wired to the following Azure Bot resource:
+Fill in the details below with your own Azure resource identifiers before running any commands. The values shown are placeholders.
 
 | Property | Value |
 | --- | --- |
-| Subscription | `0ec6c427-01d3-4462-ae56-fd9656157157` |
-| Resource group | `rg-langgraph-fabric-data-agent` |
-| Bot resource | `bot-langgraph-fabric-data-agent` |
-| Microsoft app ID | `3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae` |
-| Tenant ID | `66beb9f0-9df6-4ded-8e48-126b39813500` |
+| Subscription | `<YOUR_SUBSCRIPTION_ID>` |
+| Resource group | `<YOUR_RESOURCE_GROUP>` |
+| Bot resource | `<YOUR_BOT_NAME>` |
+| Microsoft app ID | `<YOUR_APP_CLIENT_ID>` |
+| Tenant ID | `<YOUR_TENANT_ID>` |
 | OAuth connection | `FabricOAuth2` |
 
 Current configuration notes:
@@ -33,12 +33,12 @@ Current configuration notes:
 
 ```bash
 az login
-az account set --subscription 0ec6c427-01d3-4462-ae56-fd9656157157
+az account set --subscription <YOUR_SUBSCRIPTION_ID>
 
-BOT_RESOURCE_GROUP="rg-langgraph-fabric-data-agent"
-BOT_NAME="bot-langgraph-fabric-data-agent"
-BOT_APP_ID="3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae"
-BOT_TENANT_ID="66beb9f0-9df6-4ded-8e48-126b39813500"
+BOT_RESOURCE_GROUP="<YOUR_RESOURCE_GROUP>"
+BOT_NAME="<YOUR_BOT_NAME>"
+BOT_APP_ID="<YOUR_APP_CLIENT_ID>"
+BOT_TENANT_ID="<YOUR_TENANT_ID>"
 OAUTH_CONNECTION_NAME="FabricOAuth2"
 FABRIC_SCOPE="https://api.fabric.microsoft.com/.default"
 ```
@@ -140,7 +140,7 @@ Verify the recreated connection:
 
 ```bash
 az resource show \
-  --ids "/subscriptions/0ec6c427-01d3-4462-ae56-fd9656157157/resourceGroups/rg-langgraph-fabric-data-agent/providers/Microsoft.BotService/botServices/bot-langgraph-fabric-data-agent/connections/FabricOAuth2" \
+  --ids "/subscriptions/<YOUR_SUBSCRIPTION_ID>/resourceGroups/<YOUR_RESOURCE_GROUP>/providers/Microsoft.BotService/botServices/<YOUR_BOT_NAME>/connections/FabricOAuth2" \
   --query "properties.{provider:serviceProviderDisplayName,scope:scopes,tenant:parameters[?key=='tenantId'].value | [0]}" \
   -o json
 ```
