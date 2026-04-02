@@ -128,8 +128,8 @@ async def health() -> dict[str, str]:
 
 @app.post("/chat/stream")
 async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResponse:
-    settings = get_settings()
     bearer_token = _extract_bearer_token(http_request)
+    settings = get_settings()
     mcp_user_tokens: dict[str, str] = {}
     tokens_by_scope: dict[str, str] = {}
     for server in settings.mcp_servers:
