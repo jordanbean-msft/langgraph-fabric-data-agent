@@ -24,6 +24,8 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - Always use uv for environment and dependency management.
 - Keep Python imports at the top of files.
 - Do not use lazy imports or wrap imports in try/except blocks.
+- In `packages/*/src`, do not import private symbols (names starting with `_`) from other modules. If a helper is shared across modules, promote it to a public symbol.
+- Targeted private imports are acceptable in tests when explicitly needed for unit-level coverage.
 - Prefer pydantic-settings for centralized configuration; each client package has its own settings class.
 - Use structured logging with correlation identifiers.
 - Keep FastAPI endpoints unauthenticated in this sample.
@@ -35,6 +37,7 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - Sync all packages: `uv sync --all-packages --extra dev`
 - Run lint: `uv run ruff check .`
 - Run all tests: `uv run pytest`
+- Enforce warning-free tests for validation: `uv run pytest -W error -W ignore:Exception\ ignored\ in:pytest.PytestUnraisableExceptionWarning`
 - Run API: `uv run langgraph-fabric-api`
 - Run console: `uv run langgraph-fabric-console`
 - Run M365 adapter: `uv run langgraph-fabric-m365`
@@ -42,6 +45,7 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 ## Architecture map
 
 ### langgraph-fabric-core (`packages/langgraph-fabric-core/src/langgraph_fabric_core/`)
+
 - `core/config.py`: shared base settings (`CoreSettings`) — Azure OpenAI, Fabric MCP, logging, port
 - `core/logging.py`: logging setup and correlation helpers
 - `fabric/auth.py`: local and M365 token strategies for Fabric
@@ -52,16 +56,19 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - `llm/factory.py`: Azure OpenAI / Foundry chat model factory
 
 ### langgraph-fabric-api (`packages/langgraph-fabric-api/src/langgraph_fabric_api/`)
+
 - `config.py`: `ApiSettings(CoreSettings)` reading from `packages/langgraph-fabric-api/.env` — adds OBO fields
 - `app.py`: FastAPI endpoints
 - `main.py`: API entrypoint
 
 ### langgraph-fabric-console (`packages/langgraph-fabric-console/src/langgraph_fabric_console/`)
+
 - `config.py`: `ConsoleSettings(CoreSettings)` reading from `packages/langgraph-fabric-console/.env`
 - `console.py`: terminal experience with streaming
 - `main.py`: console entrypoint
 
 ### langgraph-fabric-m365 (`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/`)
+
 - `config.py`: `M365Settings(CoreSettings)` reading from `packages/langgraph-fabric-m365/.env` — adds M365 bot fields
 - `app.py`: M365 Agents SDK adapter bridge and route handlers
 - `oauth.py`: M365 OAuth adaptive card flow, magic code handling, and M365 token resolution
@@ -90,5 +97,6 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 
 - Keep the demo straightforward and easy to read.
 - Include tests for all newly added behavior.
+- Do not merge with test warnings. Treat warnings as failures and either fix root causes or add a narrowly scoped, justified filter for known third-party teardown noise.
 - Prefer deterministic mocks over network calls in tests.
 - Keep commit scope coherent and focused.

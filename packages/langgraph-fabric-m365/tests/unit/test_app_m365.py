@@ -10,6 +10,22 @@ from langgraph_fabric_m365.oauth import PENDING_PROMPT_KEY
 from microsoft_agents.activity import ActivityTypes
 
 
+async def _agen(*chunks: str):
+    """Yield chunks as an async generator for mocking orchestrator.stream."""
+    for chunk in chunks:
+        yield chunk
+
+
+def _streaming_response() -> SimpleNamespace:
+    """Build a streaming response test double for M365 streaming-only flows."""
+    return SimpleNamespace(
+        set_generated_by_ai_label=MagicMock(),
+        queue_informative_update=MagicMock(),
+        queue_text_chunk=MagicMock(),
+        end_stream=AsyncMock(),
+    )
+
+
 def _make_settings(**overrides) -> M365Settings:
     base = {
         "azure_openai_endpoint": "https://example.services.ai.azure.com/api/projects/demo",
@@ -96,10 +112,10 @@ async def test_message_handler_calls_orchestrator_and_sends_response(
 ) -> None:
     settings = _make_settings()
     orchestrator = MagicMock()
-    orchestrator.run = AsyncMock(return_value="Here is the answer")
+    orchestrator.stream = MagicMock(side_effect=lambda **_: _agen("Here is the answer"))
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
@@ -113,18 +129,21 @@ async def test_message_handler_calls_orchestrator_and_sends_response(
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
     state = _FakeState()
 
     await message_handler(context, state)
 
-    orchestrator.run.assert_awaited_once()
-    call_kwargs = orchestrator.run.await_args.kwargs
+    orchestrator.stream.assert_called_once()
+    call_kwargs = orchestrator.stream.call_args.kwargs
     assert call_kwargs["prompt"] == "What is the answer?"
     assert call_kwargs["auth_mode"] == "m365"
     assert call_kwargs["user_id"] == "user-1"
     assert call_kwargs["fabric_user_token"] == "fabric-token"
-    context.send_activity.assert_awaited_with("Here is the answer")
+    context.streaming_response.set_generated_by_ai_label.assert_called_once_with(True)
+    context.streaming_response.queue_text_chunk.assert_any_call("Here is the answer")
+    context.streaming_response.end_stream.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -134,10 +153,10 @@ async def test_message_handler_does_not_call_orchestrator_when_no_token(
 ) -> None:
     settings = _make_settings()
     orchestrator = MagicMock()
-    orchestrator.run = AsyncMock()
+    orchestrator.stream = MagicMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value=None),
     )
 
@@ -154,7 +173,7 @@ async def test_message_handler_does_not_call_orchestrator_when_no_token(
     )
     await message_handler(context, _FakeState())
 
-    orchestrator.run.assert_not_awaited()
+    orchestrator.stream.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -164,10 +183,10 @@ async def test_message_handler_stores_conversation_history(
 ) -> None:
     settings = _make_settings()
     orchestrator = MagicMock()
-    orchestrator.run = AsyncMock(return_value="Answer text")
+    orchestrator.stream = MagicMock(side_effect=lambda **_: _agen("Answer text"))
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
@@ -181,6 +200,7 @@ async def test_message_handler_stores_conversation_history(
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
     state = _FakeState()
 
@@ -200,10 +220,10 @@ async def test_message_handler_uses_pending_prompt_after_magic_code(
 ) -> None:
     settings = _make_settings()
     orchestrator = MagicMock()
-    orchestrator.run = AsyncMock(return_value="Response to pending")
+    orchestrator.stream = MagicMock(side_effect=lambda **_: _agen("Response to pending"))
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
@@ -220,11 +240,12 @@ async def test_message_handler_uses_pending_prompt_after_magic_code(
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
 
     await message_handler(context, state)
 
-    call_kwargs = orchestrator.run.await_args.kwargs
+    call_kwargs = orchestrator.stream.call_args.kwargs
     assert call_kwargs["prompt"] == "What are top 5 customers?"
     assert state.get_value(PENDING_PROMPT_KEY) is None
 
@@ -237,10 +258,10 @@ async def test_message_handler_sends_completion_after_sign_in_with_pending_promp
     """After magic code with pending prompt, a confirmation activity is sent."""
     settings = _make_settings()
     orchestrator = MagicMock()
-    orchestrator.run = AsyncMock(return_value="Response")
+    orchestrator.stream = MagicMock(side_effect=lambda **_: _agen("Response"))
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
@@ -257,6 +278,7 @@ async def test_message_handler_sends_completion_after_sign_in_with_pending_promp
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
 
     await message_handler(context, state)
@@ -273,10 +295,10 @@ async def test_message_handler_notifies_user_when_magic_code_fails(
 ) -> None:
     settings = _make_settings()
     orchestrator = MagicMock()
-    orchestrator.run = AsyncMock()
+    orchestrator.stream = MagicMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value=None),
     )
 
@@ -294,7 +316,7 @@ async def test_message_handler_notifies_user_when_magic_code_fails(
 
     await message_handler(context, _FakeState())
 
-    orchestrator.run.assert_not_awaited()
+    orchestrator.stream.assert_not_called()
     context.send_activity.assert_awaited_once()
     error_msg = context.send_activity.await_args.args[0]
     assert "verification code" in error_msg.lower()
@@ -308,10 +330,10 @@ async def test_message_handler_sends_sign_in_prompt_when_no_token_and_no_magic_c
     """When there is no token and user sends normal text, the prompt is stored for later."""
     settings = _make_settings()
     orchestrator = MagicMock()
-    orchestrator.run = AsyncMock()
+    orchestrator.stream = MagicMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value=None),
     )
 
@@ -330,8 +352,94 @@ async def test_message_handler_sends_sign_in_prompt_when_no_token_and_no_magic_c
 
     await message_handler(context, state)
 
-    orchestrator.run.assert_not_awaited()
+    orchestrator.stream.assert_not_called()
     assert state.get_value(PENDING_PROMPT_KEY) == "Show me the top customers"
+
+
+@pytest.mark.asyncio
+async def test_message_handler_requires_streaming_response(
+    sdk_mocks: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """M365 channel is streaming-only and fails when streaming_response is unavailable."""
+    settings = _make_settings()
+    orchestrator = MagicMock()
+    orchestrator.stream = MagicMock(
+        side_effect=lambda **_: _agen(
+            "\n[tool] Querying Fabric Data Agent...\n",
+            "Final answer",
+        )
+    )
+
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.app.get_m365_user_token",
+        AsyncMock(return_value="fabric-token"),
+    )
+
+    agent_app = await create_m365_app(settings, orchestrator)
+    message_handler = agent_app._handlers["message"]
+
+    context = SimpleNamespace(
+        activity=SimpleNamespace(
+            text="Show me sales data",
+            from_property=SimpleNamespace(id="user-1"),
+            channel_id="msteams",
+        ),
+        send_activity=AsyncMock(),
+    )
+
+    with pytest.raises(RuntimeError, match="requires streaming_response"):
+        await message_handler(context, _FakeState())
+
+    context.send_activity.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_message_handler_uses_streaming_response_queue_updates(
+    sdk_mocks: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When streaming_response is available, informative updates and chunks are queued and ended."""
+    settings = _make_settings()
+    orchestrator = MagicMock()
+    orchestrator.stream = MagicMock(
+        side_effect=lambda **_: _agen(
+            "\n[tool] Querying Fabric Data Agent...\n",
+            "Final",
+            " answer",
+        )
+    )
+
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.app.get_m365_user_token",
+        AsyncMock(return_value="fabric-token"),
+    )
+
+    agent_app = await create_m365_app(settings, orchestrator)
+    message_handler = agent_app._handlers["message"]
+
+    context = SimpleNamespace(
+        activity=SimpleNamespace(
+            text="Show me sales data",
+            from_property=SimpleNamespace(id="user-1"),
+            channel_id="msteams",
+        ),
+        send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
+    )
+
+    await message_handler(context, _FakeState())
+
+    context.send_activity.assert_not_awaited()
+    context.streaming_response.queue_informative_update.assert_any_call(
+        "Working on your request..."
+    )
+    context.streaming_response.queue_informative_update.assert_any_call(
+        "Querying Fabric Data Agent..."
+    )
+    context.streaming_response.queue_text_chunk.assert_any_call("Final")
+    context.streaming_response.queue_text_chunk.assert_any_call(" answer")
+    context.streaming_response.end_stream.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -343,7 +451,7 @@ async def test_invoke_handler_sends_200_response_for_token_exchange(
     orchestrator = MagicMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._disable_signin_card",
+        "langgraph_fabric_m365.app.disable_signin_card",
         AsyncMock(),
     )
 
@@ -372,7 +480,7 @@ async def test_invoke_handler_sends_200_response_for_verify_state(
     orchestrator = MagicMock()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._disable_signin_card",
+        "langgraph_fabric_m365.app.disable_signin_card",
         AsyncMock(),
     )
 

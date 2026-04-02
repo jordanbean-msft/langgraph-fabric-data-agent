@@ -24,7 +24,7 @@ select = ["E", "F", "I", "B", "UP", "ASYNC", "N", "RUF"]
 ignore = ["E501"]
 
 [tool.pytest.ini_options]
-addopts = "-q"
+addopts = "-q --import-mode=importlib"
 asyncio_mode = "auto"
 testpaths = [
   "packages/langgraph-fabric-core/tests",

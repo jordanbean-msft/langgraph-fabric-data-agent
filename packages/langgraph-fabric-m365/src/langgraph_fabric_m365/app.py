@@ -22,16 +22,16 @@ from microsoft_agents.hosting.core import (
 from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import (
     PENDING_PROMPT_KEY,
-    _disable_signin_card,
-    _extract_magic_code,
-    _get_m365_user_token,
-    _state_delete,
-    _state_get,
-    _state_set,
+    disable_signin_card,
+    extract_magic_code,
+    get_m365_user_token,
+    state_delete,
+    state_get,
+    state_set,
 )
 from langgraph_fabric_m365.runtime import (
-    _build_m365_environment,
-    _build_m365_sdk_configuration,
+    build_m365_environment,
+    build_m365_sdk_configuration,
 )
 
 HISTORY_KEY = "history"
@@ -42,8 +42,8 @@ async def create_m365_app(
     orchestrator: AgentOrchestrator,
 ) -> AgentApplication[TurnState]:
     """Create M365 adapter plumbing that can be wired to Teams/Copilot Chat."""
-    m365_env = _build_m365_environment(settings)
-    m365_sdk_configuration = _build_m365_sdk_configuration(settings)
+    m365_env = build_m365_environment(settings)
+    m365_sdk_configuration = build_m365_sdk_configuration(settings)
     runtime_configuration = {**m365_env, **m365_sdk_configuration}
 
     storage = MemoryStorage()
@@ -68,12 +68,12 @@ async def create_m365_app(
         text = getattr(context.activity, "text", "")
         user_id = getattr(getattr(context.activity, "from_property", None), "id", "m365-user")
         channel_id = getattr(context.activity, "channel_id", None)
-        magic_code = _extract_magic_code(text)
+        magic_code = extract_magic_code(text)
 
         if not magic_code and text.strip():
-            _state_set(state, PENDING_PROMPT_KEY, text)
+            state_set(state, PENDING_PROMPT_KEY, text)
 
-        fabric_user_token = await _get_m365_user_token(
+        fabric_user_token = await get_m365_user_token(
             context=context,
             state=state,
             settings=settings,
@@ -91,38 +91,60 @@ async def create_m365_app(
 
         prompt = text
         if magic_code:
-            pending_prompt = _state_get(state, PENDING_PROMPT_KEY)
+            pending_prompt = state_get(state, PENDING_PROMPT_KEY)
             if pending_prompt:
                 prompt = pending_prompt
-                _state_delete(state, PENDING_PROMPT_KEY)
+                state_delete(state, PENDING_PROMPT_KEY)
                 await context.send_activity("Sign-in complete. Running your previous request.")
             else:
                 await context.send_activity("Sign-in complete. Please enter your request.")
                 return
 
-        raw_history = _state_get(state, HISTORY_KEY) or []
+        raw_history = state_get(state, HISTORY_KEY) or []
         history: list[BaseMessage] = messages_from_dict(raw_history) if raw_history else []
 
-        response = await orchestrator.run(
+        streamer = getattr(context, "streaming_response", None)
+        if streamer is None:
+            raise RuntimeError("M365 channel requires streaming_response for all bot replies")
+
+        chunks: list[str] = []
+
+        # Mark responses as AI-generated in M365 clients that support this metadata.
+        streamer.set_generated_by_ai_label(True)
+
+        # Keep the stream open with informative updates while tools execute.
+        streamer.queue_informative_update("Working on your request...")
+
+        async for chunk in orchestrator.stream(
             prompt=prompt,
             channel="m365",
             auth_mode="m365",
             user_id=user_id,
             fabric_user_token=fabric_user_token,
             history=history,
-        )
+        ):
+            if chunk.startswith("\n[tool]"):
+                status_text = chunk.strip()
+                if status_text.startswith("[tool]"):
+                    status_text = status_text[len("[tool]") :].strip()
+                if status_text:
+                    streamer.queue_informative_update(status_text)
+            else:
+                chunks.append(chunk)
+                streamer.queue_text_chunk(chunk)
 
+        await streamer.end_stream()
+
+        response = "".join(chunks)
         history.append(HumanMessage(content=prompt))
         history.append(AIMessage(content=response))
-        _state_set(state, HISTORY_KEY, messages_to_dict(history))
-
-        await context.send_activity(response)
+        state_set(state, HISTORY_KEY, messages_to_dict(history))
 
     @agent_app.activity("invoke")
     async def handle_invoke(context, state: TurnState):
         invoke_name = getattr(context.activity, "name", None)
         if invoke_name in {"signin/tokenExchange", "signin/verifystate", "signin/verifyState"}:
-            await _disable_signin_card(
+            await disable_signin_card(
                 context,
                 state,
                 "Sign-in is in progress. Complete the sign-in flow and return to this chat.",

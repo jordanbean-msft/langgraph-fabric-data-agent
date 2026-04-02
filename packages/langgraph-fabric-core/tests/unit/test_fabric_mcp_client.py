@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import respx
 from httpx import Response
@@ -10,23 +12,31 @@ class FakeTokenProvider:
         return "fake-token"
 
 
+def _sse_response(message: dict) -> Response:
+    payload = f"data: {json.dumps(message)}\n\n"
+    return Response(
+        200,
+        headers={"content-type": "text/event-stream"},
+        content=payload.encode("utf-8"),
+    )
+
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_list_and_call_tool(settings_fixture):
     client = FabricMcpClient(settings_fixture, FakeTokenProvider())
     auth = AuthContext(mode="local", user_id="u1")
 
-    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+    route = respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
         side_effect=[
-            Response(200, json={"jsonrpc": "2.0", "id": 1, "result": {}}),
-            Response(200, json={"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "query"}]}}),
-            Response(
-                200,
-                json={
+            _sse_response({"jsonrpc": "2.0", "id": 1, "result": {}}),
+            _sse_response({"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "query"}]}}),
+            _sse_response(
+                {
                     "jsonrpc": "2.0",
                     "id": 3,
                     "result": {"content": [{"type": "text", "text": "hello"}]},
-                },
+                }
             ),
         ]
     )
@@ -37,3 +47,65 @@ async def test_list_and_call_tool(settings_fixture):
 
     assert tools[0]["name"] == "query"
     assert text == "hello"
+    assert all(
+        "text/event-stream" in call.request.headers.get("accept", "") for call in route.calls
+    )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_and_call_tool_with_sse(settings_fixture):
+    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1")
+
+    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+        side_effect=[
+            _sse_response({"jsonrpc": "2.0", "id": 1, "result": {}}),
+            _sse_response({"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "query"}]}}),
+            _sse_response(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "result": {"content": [{"type": "text", "text": "hello from sse"}]},
+                }
+            ),
+        ]
+    )
+
+    await client.initialize(auth)
+    tools = await client.list_tools(auth)
+    text = await client.call_tool(tool_name="query", arguments={"query": "hi"}, auth_context=auth)
+
+    assert tools[0]["name"] == "query"
+    assert text == "hello from sse"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_json_response_is_supported(settings_fixture):
+    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1")
+
+    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+        return_value=Response(200, json={"jsonrpc": "2.0", "id": 1, "result": {}})
+    )
+
+    await client.initialize(auth)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_unsupported_content_type_raises(settings_fixture):
+    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1")
+
+    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+        return_value=Response(
+            200,
+            headers={"content-type": "text/plain"},
+            content=b"ok",
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="application/json or text/event-stream"):
+        await client.initialize(auth)

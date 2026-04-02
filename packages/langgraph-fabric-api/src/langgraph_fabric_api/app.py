@@ -32,7 +32,7 @@ def _extract_bearer_token(request: Request) -> str:
             status_code=401,
             detail="Missing or invalid Authorization header. Expected: Authorization: Bearer <token>",
         )
-    return auth_header[len("Bearer "):]
+    return auth_header[len("Bearer ") :]
 
 
 def _extract_user_id(token: str) -> str:
@@ -66,7 +66,11 @@ async def _get_fabric_token_obo(bearer_token: str, settings: ApiSettings) -> str
     Raises HTTP 500 when server OBO credentials are not configured, and
     HTTP 401 when the OBO exchange is rejected by Microsoft Entra ID.
     """
-    if not settings.microsoft_app_id or not settings.microsoft_app_password or not settings.microsoft_tenant_id:
+    if (
+        not settings.microsoft_app_id
+        or not settings.microsoft_app_password
+        or not settings.microsoft_tenant_id
+    ):
         raise HTTPException(
             status_code=500,
             detail=(
@@ -130,7 +134,10 @@ async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResp
             user_id=user_id,
             fabric_user_token=fabric_token,
         ):
-            yield f"data: {chunk}\n\n".encode()
+            if chunk.startswith("\n[tool]"):
+                yield f"event: tool_status\ndata: {chunk.strip()}\n\n".encode()
+            else:
+                yield f"event: text\ndata: {chunk}\n\n".encode()
         yield b"event: done\ndata: [DONE]\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

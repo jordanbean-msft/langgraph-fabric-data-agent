@@ -41,6 +41,7 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
 
     class FakeOrchestrator:
         async def stream(self, **_kwargs) -> AsyncIterator[str]:
+            yield "\n[tool] Querying Fabric Data Agent...\n"
             yield "chunk-1"
             yield "chunk-2"
 
@@ -58,6 +59,9 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
         headers={"Authorization": "Bearer fake-caller-token"},
     )
     assert response.status_code == 200
+    assert "event: tool_status" in response.text
+    assert "[tool] Querying Fabric Data Agent..." in response.text
+    assert "event: text" in response.text
     assert "chunk-1" in response.text
     assert "chunk-2" in response.text
     assert "[DONE]" in response.text

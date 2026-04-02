@@ -30,6 +30,7 @@ class FabricTokenProvider:
         self._default_credential = default_credential or DefaultAzureCredential()
         self._device_code_credential = device_code_credential or DeviceCodeCredential(
             tenant_id=settings.microsoft_tenant_id or None,
+            # Fallback to the first-party Azure CLI public client app ID.
             client_id=settings.microsoft_app_id or "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
         )
 

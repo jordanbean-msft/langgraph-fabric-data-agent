@@ -18,7 +18,7 @@ OAUTH_CARD_SIGNIN_LINK_KEY: Final[str] = "oauth_signin_link"
 PENDING_PROMPT_KEY: Final[str] = "pending_prompt"
 
 
-def _state_get(state: TurnState, key: str) -> Any:
+def state_get(state: TurnState, key: str) -> Any:
     """Read state value across SDK variants without relying on TurnState.get_value."""
     temp_state = getattr(state, "temp", None)
     if temp_state is not None and hasattr(temp_state, "get_value"):
@@ -30,7 +30,7 @@ def _state_get(state: TurnState, key: str) -> Any:
     return None
 
 
-def _state_set(state: TurnState, key: str, value: Any) -> None:
+def state_set(state: TurnState, key: str, value: Any) -> None:
     """Write state value across SDK variants without relying on TurnState.set_value."""
     temp_state = getattr(state, "temp", None)
     if temp_state is not None and hasattr(temp_state, "set_value"):
@@ -41,7 +41,7 @@ def _state_set(state: TurnState, key: str, value: Any) -> None:
         state.set_value(key, value)
 
 
-def _state_delete(state: TurnState, key: str) -> None:
+def state_delete(state: TurnState, key: str) -> None:
     """Delete state value across SDK variants without relying on TurnState.delete_value."""
     temp_state = getattr(state, "temp", None)
     if temp_state is not None and hasattr(temp_state, "delete_value"):
@@ -133,11 +133,11 @@ async def _send_oauth_adaptive_card(
 
     activity_id = getattr(send_result, "id", None)
     if activity_id:
-        _state_set(state, OAUTH_CARD_ACTIVITY_ID_KEY, activity_id)
-        _state_set(state, OAUTH_CARD_SIGNIN_LINK_KEY, sign_in_link)
+        state_set(state, OAUTH_CARD_ACTIVITY_ID_KEY, activity_id)
+        state_set(state, OAUTH_CARD_SIGNIN_LINK_KEY, sign_in_link)
 
 
-def _extract_magic_code(text: str) -> str | None:
+def extract_magic_code(text: str) -> str | None:
     """Extract a magic code when the incoming text is a numeric OAuth code."""
     candidate = text.strip()
     if MAGIC_CODE_PATTERN.match(candidate):
@@ -145,14 +145,14 @@ def _extract_magic_code(text: str) -> str | None:
     return None
 
 
-async def _disable_signin_card(
+async def disable_signin_card(
     context: Any,
     state: TurnState,
     description_text: str,
 ) -> None:
     """Disable the previously sent OAuth sign-in card action."""
-    activity_id = _state_get(state, OAUTH_CARD_ACTIVITY_ID_KEY)
-    sign_in_link = _state_get(state, OAUTH_CARD_SIGNIN_LINK_KEY)
+    activity_id = state_get(state, OAUTH_CARD_ACTIVITY_ID_KEY)
+    sign_in_link = state_get(state, OAUTH_CARD_SIGNIN_LINK_KEY)
     if not activity_id or not sign_in_link:
         return
 
@@ -178,7 +178,7 @@ async def _disable_signin_card(
         logger.debug("Unable to update sign-in card to disabled state")
 
 
-async def _get_m365_user_token(
+async def get_m365_user_token(
     context: Any,
     state: TurnState,
     settings: M365Settings,
@@ -200,7 +200,7 @@ async def _get_m365_user_token(
         )
         token_value = getattr(token_result, "token", None)
         if token_value:
-            await _disable_signin_card(
+            await disable_signin_card(
                 context,
                 state,
                 "Sign-in complete. You can continue chatting.",

@@ -15,7 +15,7 @@ REQUIRED_SERVICE_CONNECTION_KEYS: Final[tuple[str, ...]] = (
 )
 
 
-def _build_m365_environment(settings: M365Settings) -> dict[str, str]:
+def build_m365_environment(settings: M365Settings) -> dict[str, str]:
     """Build M365 SDK environment from process vars plus strongly-typed settings."""
     m365_env = dict(environ)
     m365_env.update(
@@ -36,13 +36,9 @@ def _build_m365_environment(settings: M365Settings) -> dict[str, str]:
     return m365_env
 
 
-def _build_m365_sdk_configuration(settings: M365Settings) -> dict[str, dict]:
+def build_m365_sdk_configuration(settings: M365Settings) -> dict[str, dict]:
     """Build structured SDK config expected by the Microsoft Agents runtime."""
-    missing_keys = [
-        key
-        for key in REQUIRED_SERVICE_CONNECTION_KEYS
-        if not getattr(settings, key)
-    ]
+    missing_keys = [key for key in REQUIRED_SERVICE_CONNECTION_KEYS if not getattr(settings, key)]
     if missing_keys:
         missing = ", ".join(missing_keys)
         raise ValueError(

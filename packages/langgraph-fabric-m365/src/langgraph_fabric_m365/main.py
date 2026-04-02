@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from aiohttp.web import Application, Request, Response, run_app
+from aiohttp.web import AppKey, Application, Request, Response, run_app
 from langgraph_fabric_core.core.logging import configure_logging
 from langgraph_fabric_core.fabric.auth import FabricTokenProvider
 from langgraph_fabric_core.fabric.mcp_client import FabricMcpClient
@@ -17,6 +17,10 @@ from langgraph_fabric_m365.app import create_m365_app
 from langgraph_fabric_m365.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+AGENT_CONFIGURATION_KEY: AppKey[AgentAuthConfiguration] = AppKey("agent_configuration")
+AGENT_APP_KEY: AppKey[AgentApplication[TurnState]] = AppKey("agent_app")
+ADAPTER_KEY: AppKey[object] = AppKey("adapter")
 
 
 async def _build_m365_agent_app() -> AgentApplication[TurnState]:
@@ -60,9 +64,9 @@ def create_server_app(agent_app: AgentApplication[TurnState], settings) -> Appli
     app = Application(middlewares=[jwt_authorization_middleware])
     app.router.add_post("/api/messages", entry_point)
     app.router.add_get("/api/messages", health_check)
-    app["agent_configuration"] = _resolve_agent_auth_configuration(agent_app, settings)
-    app["agent_app"] = agent_app
-    app["adapter"] = agent_app.adapter
+    app[AGENT_CONFIGURATION_KEY] = _resolve_agent_auth_configuration(agent_app, settings)
+    app[AGENT_APP_KEY] = agent_app
+    app[ADAPTER_KEY] = agent_app.adapter
     return app
 
 

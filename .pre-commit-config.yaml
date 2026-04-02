@@ -10,7 +10,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: uv run pytest
+        entry: uv run pytest -W error -W ignore:Exception\ ignored\ in:pytest.PytestUnraisableExceptionWarning
         language: system
         pass_filenames: false
         stages: [pre-push]

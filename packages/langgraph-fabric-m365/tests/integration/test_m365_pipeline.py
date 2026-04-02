@@ -6,7 +6,7 @@ Teams services.
 """
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, messages_from_dict
@@ -15,6 +15,15 @@ from langgraph_fabric_m365.app import HISTORY_KEY, create_m365_app
 from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import PENDING_PROMPT_KEY
 from microsoft_agents.activity import ActivityTypes
+
+
+def _streaming_response() -> SimpleNamespace:
+    return SimpleNamespace(
+        set_generated_by_ai_label=MagicMock(),
+        queue_informative_update=MagicMock(),
+        queue_text_chunk=MagicMock(),
+        end_stream=AsyncMock(),
+    )
 
 
 def _make_settings(**overrides) -> M365Settings:
@@ -100,10 +109,10 @@ def _make_real_orchestrator(response: str = "Orchestrator answer") -> AgentOrche
     """Build a real AgentOrchestrator backed by a simple fake graph."""
 
     class FakeGraph:
-        async def ainvoke(self, state):
-            return {
-                **state,
-                "messages": state["messages"] + [SimpleNamespace(content=response)],
+        async def astream_events(self, state, version="v2"):
+            yield {
+                "event": "on_chat_model_stream",
+                "data": {"chunk": SimpleNamespace(content=response)},
             }
 
     orch = AgentOrchestrator.__new__(AgentOrchestrator)
@@ -126,7 +135,7 @@ async def test_m365_message_handler_drives_real_orchestrator(
     real_orchestrator = _make_real_orchestrator("Revenue is $100M for Q1.")
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
@@ -140,12 +149,14 @@ async def test_m365_message_handler_drives_real_orchestrator(
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
     state = _FakeState()
 
     await message_handler(context, state)
 
-    context.send_activity.assert_awaited_with("Revenue is $100M for Q1.")
+    context.send_activity.assert_not_awaited()
+    context.streaming_response.queue_text_chunk.assert_any_call("Revenue is $100M for Q1.")
 
 
 @pytest.mark.asyncio
@@ -159,19 +170,19 @@ async def test_m365_message_handler_preserves_history_across_turns(
     call_count = {"n": 0}
 
     class _FakeGraph:
-        async def ainvoke(self, state):
+        async def astream_events(self, state, version="v2"):
             response = responses[call_count["n"]]
             call_count["n"] += 1
-            return {
-                **state,
-                "messages": state["messages"] + [SimpleNamespace(content=response)],
+            yield {
+                "event": "on_chat_model_stream",
+                "data": {"chunk": SimpleNamespace(content=response)},
             }
 
     real_orchestrator = AgentOrchestrator.__new__(AgentOrchestrator)
     real_orchestrator.__dict__["_graph"] = _FakeGraph()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
@@ -188,9 +199,11 @@ async def test_m365_message_handler_preserves_history_across_turns(
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
     await message_handler(ctx1, state)
-    ctx1.send_activity.assert_awaited_with("First answer")
+    ctx1.send_activity.assert_not_awaited()
+    ctx1.streaming_response.queue_text_chunk.assert_any_call("First answer")
 
     # Second turn - state now has stored history
     ctx2 = SimpleNamespace(
@@ -200,9 +213,11 @@ async def test_m365_message_handler_preserves_history_across_turns(
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
     await message_handler(ctx2, state)
-    ctx2.send_activity.assert_awaited_with("Second answer")
+    ctx2.send_activity.assert_not_awaited()
+    ctx2.streaming_response.queue_text_chunk.assert_any_call("Second answer")
 
     # History should now contain 4 messages (2 turns x 2 messages each)
     history_raw = state.get_value(HISTORY_KEY)
@@ -226,7 +241,7 @@ async def test_m365_invoke_handler_responds_independently_of_orchestrator(
     real_orchestrator = _make_real_orchestrator()
 
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._disable_signin_card",
+        "langgraph_fabric_m365.app.disable_signin_card",
         AsyncMock(),
     )
 
@@ -256,7 +271,7 @@ async def test_m365_sign_in_flow_then_message_uses_pending_prompt(
 
     # Simulate token redemption success
     monkeypatch.setattr(
-        "langgraph_fabric_m365.app._get_m365_user_token",
+        "langgraph_fabric_m365.app.get_m365_user_token",
         AsyncMock(return_value="fabric-token"),
     )
 
@@ -276,12 +291,13 @@ async def test_m365_sign_in_flow_then_message_uses_pending_prompt(
             channel_id="msteams",
         ),
         send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
     )
 
     await message_handler(magic_code_ctx, state)
 
     # Orchestrator should have been called with the pending prompt
-    calls = magic_code_ctx.send_activity.await_args_list
+    calls = magic_code_ctx.streaming_response.queue_text_chunk.call_args_list
     responses = [call.args[0] for call in calls]
-    assert any("Answer to pending question" == r for r in responses)
+    assert any("Answer to pending question" == response for response in responses)
     assert state.get_value(PENDING_PROMPT_KEY) is None

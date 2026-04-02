@@ -8,17 +8,17 @@ from langgraph_fabric_m365.oauth import (
     OAUTH_CARD_ACTIVITY_ID_KEY,
     OAUTH_CARD_SIGNIN_LINK_KEY,
     _build_oauth_adaptive_card,
-    _disable_signin_card,
-    _extract_magic_code,
     _extract_sign_in_link,
-    _get_m365_user_token,
-    _state_delete,
-    _state_get,
-    _state_set,
+    disable_signin_card,
+    extract_magic_code,
+    get_m365_user_token,
+    state_delete,
+    state_get,
+    state_set,
 )
 from langgraph_fabric_m365.runtime import (
-    _build_m365_environment,
-    _build_m365_sdk_configuration,
+    build_m365_environment,
+    build_m365_sdk_configuration,
 )
 
 
@@ -66,10 +66,10 @@ def _make_settings(**overrides: str) -> M365Settings:
     return M365Settings.model_construct(**base)
 
 
-def test_build_m365_sdk_configuration_uses_settings_values() -> None:
+def testbuild_m365_sdk_configuration_uses_settings_values() -> None:
     settings = _make_settings()
 
-    sdk_config = _build_m365_sdk_configuration(settings)
+    sdk_config = build_m365_sdk_configuration(settings)
 
     assert sdk_config["CONNECTIONS"]["SERVICE_CONNECTION"]["SETTINGS"]["CLIENTID"] == (
         "11111111-1111-1111-1111-111111111111"
@@ -79,11 +79,11 @@ def test_build_m365_sdk_configuration_uses_settings_values() -> None:
     )
 
 
-def test_build_m365_sdk_configuration_raises_for_missing_required_setting() -> None:
+def testbuild_m365_sdk_configuration_raises_for_missing_required_setting() -> None:
     settings = _make_settings(connections_service_connection_client_secret="")
 
     with pytest.raises(ValueError) as exc:
-        _build_m365_sdk_configuration(settings)
+        build_m365_sdk_configuration(settings)
 
     assert "connections_service_connection_client_secret" in str(exc.value)
 
@@ -110,9 +110,9 @@ def test_build_oauth_adaptive_card_disables_action_when_requested() -> None:
     assert card["actions"][0]["title"] == "Sign in opened"
 
 
-def test_extract_magic_code_accepts_numeric_code_only() -> None:
-    assert _extract_magic_code(" 123456 ") == "123456"
-    assert _extract_magic_code("not-a-code") is None
+def testextract_magic_code_accepts_numeric_code_only() -> None:
+    assert extract_magic_code(" 123456 ") == "123456"
+    assert extract_magic_code("not-a-code") is None
 
 
 def test_extract_sign_in_link_handles_direct_and_nested_shapes() -> None:
@@ -124,7 +124,7 @@ def test_extract_sign_in_link_handles_direct_and_nested_shapes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_m365_user_token_sends_adaptive_card_when_signin_required(monkeypatch: pytest.MonkeyPatch) -> None:
+async def testget_m365_user_token_sends_adaptive_card_when_signin_required(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _make_settings()
 
     class _FakeState:
@@ -175,7 +175,7 @@ async def test_get_m365_user_token_sends_adaptive_card_when_signin_required(monk
     )
     state = _FakeState()
 
-    token = await _get_m365_user_token(
+    token = await get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -195,7 +195,7 @@ async def test_get_m365_user_token_sends_adaptive_card_when_signin_required(monk
 
 
 @pytest.mark.asyncio
-async def test_get_m365_user_token_redeems_magic_code_and_disables_card(monkeypatch: pytest.MonkeyPatch) -> None:
+async def testget_m365_user_token_redeems_magic_code_and_disables_card(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _make_settings()
 
     class _FakeState:
@@ -242,7 +242,7 @@ async def test_get_m365_user_token_redeems_magic_code_and_disables_card(monkeypa
     )
     state = _FakeState()
 
-    token = await _get_m365_user_token(
+    token = await get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -257,7 +257,7 @@ async def test_get_m365_user_token_redeems_magic_code_and_disables_card(monkeypa
 
 
 # ---------------------------------------------------------------------------
-# State helper tests (_state_get / _state_set / _state_delete)
+# State helper tests (state_get / state_set / state_delete)
 # ---------------------------------------------------------------------------
 
 
@@ -278,56 +278,56 @@ class _FakeStateWithTemp:
         self._values.pop(key, None)
 
 
-def test_state_get_uses_temp_state_when_available() -> None:
+def teststate_get_uses_temp_state_when_available() -> None:
     state = _FakeStateWithTemp()
     state.temp.set_value("foo", "bar")
-    assert _state_get(state, "foo") == "bar"
+    assert state_get(state, "foo") == "bar"
 
 
-def test_state_get_falls_back_to_state_direct() -> None:
+def teststate_get_falls_back_to_state_direct() -> None:
     state = _FakeState()
     state.set_value("key1", "val1")
-    assert _state_get(state, "key1") == "val1"
+    assert state_get(state, "key1") == "val1"
 
 
-def test_state_get_returns_none_when_no_get_value_method() -> None:
+def teststate_get_returns_none_when_no_get_value_method() -> None:
     invalid_state = SimpleNamespace()
-    assert _state_get(invalid_state, "key") is None
+    assert state_get(invalid_state, "key") is None
 
 
-def test_state_set_uses_temp_state_when_available() -> None:
+def teststate_set_uses_temp_state_when_available() -> None:
     state = _FakeStateWithTemp()
-    _state_set(state, "answer", 42)
+    state_set(state, "answer", 42)
     assert state.temp.get_value("answer") == 42
 
 
-def test_state_set_falls_back_to_state_direct() -> None:
+def teststate_set_falls_back_to_state_direct() -> None:
     state = _FakeState()
-    _state_set(state, "x", "hello")
+    state_set(state, "x", "hello")
     assert state.get_value("x") == "hello"
 
 
-def test_state_delete_uses_temp_state_when_available() -> None:
+def teststate_delete_uses_temp_state_when_available() -> None:
     state = _FakeStateWithTemp()
     state.temp.set_value("remove_me", "value")
-    _state_delete(state, "remove_me")
+    state_delete(state, "remove_me")
     assert state.temp.get_value("remove_me") is None
 
 
-def test_state_delete_falls_back_to_state_direct() -> None:
+def teststate_delete_falls_back_to_state_direct() -> None:
     state = _FakeState()
     state.set_value("to_remove", "value")
-    _state_delete(state, "to_remove")
+    state_delete(state, "to_remove")
     assert state.get_value("to_remove") is None
 
 
 # ---------------------------------------------------------------------------
-# _disable_signin_card
+# disable_signin_card
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_disable_signin_card_updates_activity_with_disabled_card() -> None:
+async def testdisable_signin_card_updates_activity_with_disabled_card() -> None:
     state = _FakeState()
     state.set_value(OAUTH_CARD_ACTIVITY_ID_KEY, "activity-id-99")
     state.set_value(OAUTH_CARD_SIGNIN_LINK_KEY, "https://example.com/signin")
@@ -337,7 +337,7 @@ async def test_disable_signin_card_updates_activity_with_disabled_card() -> None
         update_activity=AsyncMock(),
     )
 
-    await _disable_signin_card(context, state, "Sign-in is in progress.")
+    await disable_signin_card(context, state, "Sign-in is in progress.")
 
     context.update_activity.assert_awaited_once()
     updated = context.update_activity.await_args.args[0]
@@ -350,29 +350,29 @@ async def test_disable_signin_card_updates_activity_with_disabled_card() -> None
 
 
 @pytest.mark.asyncio
-async def test_disable_signin_card_does_nothing_when_no_activity_id() -> None:
+async def testdisable_signin_card_does_nothing_when_no_activity_id() -> None:
     state = _FakeState()  # no IDs stored
 
     context = SimpleNamespace(update_activity=AsyncMock())
-    await _disable_signin_card(context, state, "Some message")
+    await disable_signin_card(context, state, "Some message")
 
     context.update_activity.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
-# _get_m365_user_token - additional paths
+# get_m365_user_token - additional paths
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_get_m365_user_token_returns_none_when_no_token_client() -> None:
+async def testget_m365_user_token_returns_none_when_no_token_client() -> None:
     context = SimpleNamespace(
         adapter=SimpleNamespace(USER_TOKEN_CLIENT_KEY="UserTokenClient"),
         turn_state={},  # no client registered
     )
     state = _FakeState()
 
-    token = await _get_m365_user_token(
+    token = await get_m365_user_token(
         context=context,
         state=state,
         settings=_make_settings(),
@@ -383,7 +383,7 @@ async def test_get_m365_user_token_returns_none_when_no_token_client() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_m365_user_token_returns_none_when_no_channel_id() -> None:
+async def testget_m365_user_token_returns_none_when_no_channel_id() -> None:
     token_client = SimpleNamespace(user_token=SimpleNamespace(get_token=AsyncMock()))
     context = SimpleNamespace(
         adapter=SimpleNamespace(USER_TOKEN_CLIENT_KEY="UserTokenClient"),
@@ -391,7 +391,7 @@ async def test_get_m365_user_token_returns_none_when_no_channel_id() -> None:
     )
     state = _FakeState()
 
-    token = await _get_m365_user_token(
+    token = await get_m365_user_token(
         context=context,
         state=state,
         settings=_make_settings(),
@@ -402,7 +402,7 @@ async def test_get_m365_user_token_returns_none_when_no_channel_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_m365_user_token_handles_404_and_prompts_signin(
+async def testget_m365_user_token_handles_404_and_prompts_signin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A 404 from the token service should trigger the sign-in flow."""
@@ -443,7 +443,7 @@ async def test_get_m365_user_token_handles_404_and_prompts_signin(
     )
     state = _FakeState()
 
-    token = await _get_m365_user_token(
+    token = await get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -456,7 +456,7 @@ async def test_get_m365_user_token_handles_404_and_prompts_signin(
 
 
 @pytest.mark.asyncio
-async def test_get_m365_user_token_handles_value_error_gracefully(
+async def testget_m365_user_token_handles_value_error_gracefully(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A ValueError from the token lookup should not propagate."""
@@ -476,7 +476,7 @@ async def test_get_m365_user_token_handles_value_error_gracefully(
     )
     state = _FakeState()
 
-    token = await _get_m365_user_token(
+    token = await get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -488,13 +488,13 @@ async def test_get_m365_user_token_handles_value_error_gracefully(
 
 
 # ---------------------------------------------------------------------------
-# _build_m365_environment
+# build_m365_environment
 # ---------------------------------------------------------------------------
 
 
-def test_build_m365_environment_includes_all_required_settings_keys() -> None:
+def testbuild_m365_environment_includes_all_required_settings_keys() -> None:
     settings = _make_settings()
-    env = _build_m365_environment(settings)
+    env = build_m365_environment(settings)
 
     assert env["MICROSOFT_APP_ID"] == settings.microsoft_app_id
     assert env["MICROSOFT_APP_PASSWORD"] == settings.microsoft_app_password
@@ -511,9 +511,9 @@ def test_build_m365_environment_includes_all_required_settings_keys() -> None:
     )
 
 
-def test_build_m365_environment_returns_dict_containing_os_env(monkeypatch) -> None:
-    """_build_m365_environment merges OS env into the output dict."""
+def testbuild_m365_environment_returns_dict_containing_os_env(monkeypatch) -> None:
+    """build_m365_environment merges OS env into the output dict."""
     monkeypatch.setenv("TEST_UNIQUE_MARKER_VAR", "marker-value")
     settings = _make_settings()
-    env = _build_m365_environment(settings)
+    env = build_m365_environment(settings)
     assert env.get("TEST_UNIQUE_MARKER_VAR") == "marker-value"

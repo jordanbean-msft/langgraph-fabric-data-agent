@@ -22,7 +22,6 @@
     }
   ],
   "settings": {
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     "python.analysis.extraPaths": [
       "packages/langgraph-fabric-core/src",
       "packages/langgraph-fabric-api/src",

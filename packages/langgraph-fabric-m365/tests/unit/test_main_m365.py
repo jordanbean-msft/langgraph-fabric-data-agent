@@ -16,9 +16,9 @@ def test_create_server_app_registers_messages_routes() -> None:
     routes = {(route.method, route.resource.canonical) for route in app.router.routes()}
     assert ("POST", "/api/messages") in routes
     assert ("GET", "/api/messages") in routes
-    assert "agent_configuration" in app
-    assert app["agent_app"] is agent_app
-    assert app["adapter"] is agent_app.adapter
+    assert main_m365.AGENT_CONFIGURATION_KEY in app
+    assert app[main_m365.AGENT_APP_KEY] is agent_app
+    assert app[main_m365.ADAPTER_KEY] is agent_app.adapter
 
 
 def test_main_starts_server_on_configured_port(monkeypatch) -> None:
