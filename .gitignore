@@ -15,6 +15,7 @@ appPackage/manifest.json
 # Environment files (never commit real secrets)
 .env
 !.env.example
+!packages/**/.env.example
 
 # Testing and coverage
 .pytest_cache/

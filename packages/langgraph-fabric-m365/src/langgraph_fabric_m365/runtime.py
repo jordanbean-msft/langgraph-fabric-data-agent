@@ -1,9 +1,9 @@
-"""Hosted runtime configuration helpers."""
+"""M365 runtime configuration helpers."""
 
 from os import environ
 from typing import Final
 
-from langgraph_fabric_core.core.config import AppSettings
+from langgraph_fabric_m365.config import M365Settings
 
 REQUIRED_SERVICE_CONNECTION_KEYS: Final[tuple[str, ...]] = (
     "connections_service_connection_id",
@@ -15,10 +15,10 @@ REQUIRED_SERVICE_CONNECTION_KEYS: Final[tuple[str, ...]] = (
 )
 
 
-def _build_hosted_environment(settings: AppSettings) -> dict[str, str]:
-    """Build hosted SDK environment from process vars plus strongly-typed settings."""
-    hosted_env = dict(environ)
-    hosted_env.update(
+def _build_m365_environment(settings: M365Settings) -> dict[str, str]:
+    """Build M365 SDK environment from process vars plus strongly-typed settings."""
+    m365_env = dict(environ)
+    m365_env.update(
         {
             "MICROSOFT_APP_ID": settings.microsoft_app_id,
             "MICROSOFT_APP_PASSWORD": settings.microsoft_app_password,
@@ -33,10 +33,10 @@ def _build_hosted_environment(settings: AppSettings) -> dict[str, str]:
         }
     )
 
-    return hosted_env
+    return m365_env
 
 
-def _build_hosted_sdk_configuration(settings: AppSettings) -> dict[str, dict]:
+def _build_m365_sdk_configuration(settings: M365Settings) -> dict[str, dict]:
     """Build structured SDK config expected by the Microsoft Agents runtime."""
     missing_keys = [
         key
@@ -46,8 +46,8 @@ def _build_hosted_sdk_configuration(settings: AppSettings) -> dict[str, dict]:
     if missing_keys:
         missing = ", ".join(missing_keys)
         raise ValueError(
-            "Missing required hosted service connection settings: "
-            f"{missing}. Configure these in .env (see .env.example) or export them in your shell."
+            "Missing required M365 service connection settings: "
+            f"{missing}. Configure these in .env.m365 (see .env.m365.example) or export them in your shell."
         )
 
     return {

@@ -74,9 +74,9 @@ az bot create \
   --endpoint "https://<public-hostname>/api/messages"
 ```
 
-## Run the hosted adapter and update the messaging endpoint
+## Run the M365 adapter and update the messaging endpoint
 
-Start the hosted adapter:
+Start the M365 adapter:
 
 ```bash
 uv run langgraph-fabric-m365

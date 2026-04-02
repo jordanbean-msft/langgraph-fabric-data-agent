@@ -1,15 +1,16 @@
 # langgraph-fabric-m365
 
-Hosted adapter for Teams and Copilot Chat via the M365 Agents SDK.
+M365 adapter for Teams and Copilot Chat via the M365 Agents SDK.
 Bridges the LangGraph agent to the Bot Framework messaging pipeline.
 
 ## Modules
 
 | Module | Purpose |
 | --- | --- |
-| `app.py` | Hosted M365 adapter bridge and route wiring |
-| `oauth.py` | Hosted OAuth Adaptive Card flow, magic code handling, and hosted token resolution |
-| `runtime.py` | Hosted runtime environment and SDK configuration builders |
+| `config.py` | M365-specific settings (`M365Settings`) reading from `.env.m365` |
+| `app.py` | M365 adapter bridge and route wiring |
+| `oauth.py` | M365 OAuth Adaptive Card flow, magic code handling, and M365 token resolution |
+| `runtime.py` | M365 runtime environment and SDK configuration builders |
 | `main.py` | Entrypoint (`langgraph-fabric-m365` script) |
 
 ## Run
@@ -22,7 +23,7 @@ Expose port `8000` via a dev tunnel and update the Azure Bot messaging endpoint 
 
 ## OAuth flow
 
-The hosted adapter:
+The M365 adapter:
 
 1. Sends an Adaptive Card sign-in prompt when the user is not authenticated.
 2. Disables the sign-in action after flow initiation to prevent duplicate prompts.
@@ -31,4 +32,3 @@ The hosted adapter:
 State helpers in `oauth.py` wrap TurnState access for SDK compatibility.
 
 See the [architecture guide](../../docs/architecture.md), [Teams and Copilot Chat guide](../../docs/m365-guide.md), and [Azure Bot Service guide](../../docs/azure-bot-service.md) for full details.
-

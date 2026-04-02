@@ -32,7 +32,7 @@ Base prerequisites:
 - Access to a Fabric Data Agent MCP endpoint
 - A signed-in user account that can authenticate to Azure and Fabric
 
-Hosted-mode prerequisites (Teams / Copilot Chat only):
+M365 adapter prerequisites (Teams / Copilot Chat only):
 
 - A Microsoft Entra app registration for the bot — see [docs/app-registration.md](docs/app-registration.md)
 - An Azure Bot resource with a Bot Service OAuth connection — see [docs/azure-bot-service.md](docs/azure-bot-service.md)
@@ -40,20 +40,32 @@ Hosted-mode prerequisites (Teams / Copilot Chat only):
 
 Optional local tooling:
 
-- `devtunnel` CLI for exposing the hosted adapter from your machine
+- `devtunnel` CLI for exposing the M365 adapter from your machine
 - `zip` for the `build-m365-app-package` task
 
 ## Setup
 
-1. Copy [.env.example](.env.example) to `.env` and fill your values.
-2. Install all workspace packages and dev dependencies:
+1. Install all workspace packages and dev dependencies:
 
 ```bash
 uv sync --all-packages --extra dev
 ```
 
-3. Fill the Azure OpenAI and Fabric MCP values in `.env`.
-4. For hosted mode, also set `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_TENANT_ID`, `FABRIC_OAUTH_CONNECTION_NAME`, and the `CONNECTIONS__SERVICE_CONNECTION__*` values from the [app registration reference](docs/app-registration.md).
+2. Copy the environment file for your target interface and fill your values:
+
+```bash
+# Console
+cp packages/langgraph-fabric-console/.env.example packages/langgraph-fabric-console/.env
+
+# FastAPI server
+cp packages/langgraph-fabric-api/.env.example packages/langgraph-fabric-api/.env
+
+# M365 adapter (Teams / Copilot Chat)
+cp packages/langgraph-fabric-m365/.env.example packages/langgraph-fabric-m365/.env
+```
+
+3. Fill the Azure OpenAI and Fabric MCP values in the copied file.
+4. For the M365 adapter, also set `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_TENANT_ID`, `FABRIC_OAUTH_CONNECTION_NAME`, and the `CONNECTIONS__SERVICE_CONNECTION__*` values from the [app registration reference](docs/app-registration.md).
 
 ## Run
 
@@ -69,7 +81,7 @@ Console surface:
 uv run langgraph-fabric-console
 ```
 
-Hosted adapter (Teams / Copilot Chat):
+M365 adapter (Teams / Copilot Chat):
 
 ```bash
 uv run langgraph-fabric-m365
@@ -89,7 +101,7 @@ uv run pytest
 | [docs/architecture.md](docs/architecture.md) | Per-package module breakdown and dependency rules |
 | [docs/api-guide.md](docs/api-guide.md) | API authentication setup and streaming endpoint usage |
 | [docs/console-guide.md](docs/console-guide.md) | Console authentication setup and interactive terminal usage |
-| [docs/m365-guide.md](docs/m365-guide.md) | Teams and Copilot Chat hosted adapter setup, OAuth sign-in flow, and environment reference |
+| [docs/m365-guide.md](docs/m365-guide.md) | Teams and Copilot Chat M365 adapter setup, OAuth sign-in flow, and environment reference |
 | [docs/app-registration.md](docs/app-registration.md) | Entra app registration reference, API permissions, and environment variable mapping |
 | [docs/azure-bot-service.md](docs/azure-bot-service.md) | Azure Bot Service setup, secret rotation, OAuth connection, and app package |
 | [docs/vscode-tasks.md](docs/vscode-tasks.md) | VS Code task reference and recommended flows |
@@ -99,9 +111,9 @@ uv run pytest
 - The `/chat/stream` endpoint requires `Authorization: Bearer <token>` — see [docs/api-guide.md](docs/api-guide.md).
 - Fabric tool calls always require user authentication.
 - Local mode uses `DefaultAzureCredential` with interactive fallback.
-- Hosted mode expects Bot Service user tokens.
-- Hosted OAuth behavior sends an Adaptive Card sign-in prompt, disables the sign-in action after flow initiation, and supports pasting OAuth magic codes back in chat.
-- Hosted runtime state access uses helper functions in [`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py) instead of direct `TurnState` calls for SDK compatibility.
+- M365 mode expects Bot Service user tokens from Teams/Copilot Chat.
+- M365 OAuth behavior sends an Adaptive Card sign-in prompt, disables the sign-in action after flow initiation, and supports pasting OAuth magic codes back in chat.
+- M365 runtime state access uses helper functions in [`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py) instead of direct `TurnState` calls for SDK compatibility.
 - Logging supports a base `LOG_LEVEL` plus optional `LOG_LEVEL_OVERRIDE` values such as `langgraph_fabric_core.graph:DEBUG,azure.core:WARNING`.
 - DEBUG logs can include large configuration payloads from dependencies. Redact secrets before sharing logs outside your machine.
 

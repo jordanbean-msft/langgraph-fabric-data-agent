@@ -7,9 +7,9 @@ This package has **no** dependency on FastAPI, aiohttp, or the M365 Agents SDK.
 
 | Module | Purpose |
 | --- | --- |
-| `core/config.py` | Centralized environment settings via pydantic-settings |
+| `core/config.py` | Shared base settings (`CoreSettings`) via pydantic-settings |
 | `core/logging.py` | Structured logs with correlation context |
-| `fabric/auth.py` | Local and hosted token strategies for Fabric |
+| `fabric/auth.py` | Local and M365 token strategies for Fabric |
 | `fabric/mcp_client.py` | Strict JSON-RPC MCP client wrapper for Fabric Data Agent endpoints |
 | `fabric/tools.py` | LangChain tool wrappers over MCP |
 | `graph/workflow.py` | LangGraph state graph definition and tool routing |

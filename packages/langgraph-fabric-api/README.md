@@ -13,6 +13,7 @@ FastAPI streaming endpoint for the LangGraph Fabric Data Agent sample.
 
 | Module | Purpose |
 | --- | --- |
+| `config.py` | API-specific settings (`ApiSettings`) reading from `.env.api` |
 | `app.py` | FastAPI application with `/health` and `/chat/stream` |
 | `main.py` | Entrypoint (`langgraph-fabric-api` script) |
 

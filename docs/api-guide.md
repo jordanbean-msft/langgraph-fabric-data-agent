@@ -14,7 +14,7 @@ This guide is for **developers building applications** that integrate with the F
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) installed.
 - An Entra ID app registration for this API server (see the [app registration guide](app-registration.md)).
-- A `.env` file at the repository root with the required server-side environment variables (see [Environment variables](#environment-variables) below).
+- A `.env` file in `packages/langgraph-fabric-api/` with the required server-side environment variables (see [Environment variables](#environment-variables) below).
 
 ## Authentication overview
 
@@ -244,7 +244,7 @@ curl -s -N \
 
 ## Environment variables
 
-All settings are read from `.env` via the core settings model. The following variables are required to run the API server:
+All settings are read from `packages/langgraph-fabric-api/.env` via the API settings model. The following variables are required to run the API server:
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
@@ -260,5 +260,5 @@ All settings are read from `.env` via the core settings model. The following var
 | `PORT` | No | `8000` | Port the server listens on |
 | `LOG_LEVEL` | No | `INFO` | Root log level |
 
-See [.env.example](../.env.example) for a full template.
+See [packages/langgraph-fabric-api/.env.example](../packages/langgraph-fabric-api/.env.example) for a full template.
 

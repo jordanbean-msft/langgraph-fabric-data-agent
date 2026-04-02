@@ -141,15 +141,15 @@ async def test_run_passes_auth_fields_to_graph_state() -> None:
 
     await orchestrator.run(
         prompt="query",
-        channel="hosted",
-        auth_mode="hosted",
-        user_id="hosted-user",
+        channel="m365",
+        auth_mode="m365",
+        user_id="m365-user",
         fabric_user_token="tok-abc",
     )
 
     state = captured["state"]
-    assert state["auth_mode"] == "hosted"
-    assert state["user_id"] == "hosted-user"
+    assert state["auth_mode"] == "m365"
+    assert state["user_id"] == "m365-user"
     assert state["fabric_user_token"] == "tok-abc"
 
 

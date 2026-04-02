@@ -6,19 +6,19 @@ ms.date: 2026-04-01
 
 # Teams and Copilot Chat Guide
 
-The `langgraph-fabric-m365` package is a hosted adapter that bridges the Fabric Data Agent to Microsoft Teams and Microsoft 365 Copilot Chat. It uses the M365 Agents SDK to handle Bot Framework messaging and an Azure Bot Service OAuth connection to authenticate users against Fabric.
+The `langgraph-fabric-m365` package is an M365 adapter that bridges the Fabric Data Agent to Microsoft Teams and Microsoft 365 Copilot Chat. It uses the M365 Agents SDK to handle Bot Framework messaging and an Azure Bot Service OAuth connection to authenticate users against Fabric.
 
 ## Prerequisites
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) installed.
 - An Azure Bot resource configured with a Bot Service OAuth connection pointing at your Entra app — see [app-registration.md](app-registration.md) and [azure-bot-service.md](azure-bot-service.md).
-- A `.env` file at the repository root with all required variables (see [Environment variables](#environment-variables) below).
+- A `.env` file in `packages/langgraph-fabric-m365/` with all required variables (see [Environment variables](#environment-variables) below).
 - A public HTTPS URL for the bot messaging endpoint. For local development, use `devtunnel` or a similar tool.
 - Access to a Microsoft 365 tenant where you can install the app in Teams or test in Copilot Chat.
 
 ## Authentication
 
-Authentication in the hosted adapter is user-delegated and flows through the Azure Bot Service OAuth connection:
+Authentication in the M365 adapter is user-delegated and flows through the Azure Bot Service OAuth connection:
 
 1. A user sends a message in Teams or Copilot Chat.
 2. The adapter attempts to exchange the Bot Service OAuth connection token for a Fabric access token.
@@ -34,7 +34,7 @@ See [azure-bot-service.md](azure-bot-service.md) for step-by-step instructions o
 
 ### 1. Configure the .env file
 
-Copy `.env.example` to `.env` and fill in the hosted-adapter values:
+Copy `packages/langgraph-fabric-m365/.env.example` to `packages/langgraph-fabric-m365/.env` and fill in the M365 adapter values:
 
 ```ini
 # Azure Bot / M365 settings
@@ -113,7 +113,7 @@ See [azure-bot-service.md](azure-bot-service.md) for the full app package refere
 
 ## Environment variables
 
-All settings are read from `.env` via the core settings model. The following variables are required for the hosted adapter:
+All settings are read from `packages/langgraph-fabric-m365/.env` via the M365 settings model. The following variables are required for the M365 adapter:
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
@@ -136,4 +136,4 @@ All settings are read from `.env` via the core settings model. The following var
 | `PORT` | No | `8000` | Port the adapter listens on |
 | `LOG_LEVEL` | No | `INFO` | Root log level |
 
-See [.env.example](../.env.example) for a full template.
+See [packages/langgraph-fabric-m365/.env.example](../packages/langgraph-fabric-m365/.env.example) for a full template.

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from aiohttp.client_exceptions import ClientResponseError
-from langgraph_fabric_core.core.config import AppSettings
+from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import (
     OAUTH_CARD_ACTIVITY_ID_KEY,
     OAUTH_CARD_SIGNIN_LINK_KEY,
@@ -11,14 +11,14 @@ from langgraph_fabric_m365.oauth import (
     _disable_signin_card,
     _extract_magic_code,
     _extract_sign_in_link,
-    _get_hosted_user_token,
+    _get_m365_user_token,
     _state_delete,
     _state_get,
     _state_set,
 )
 from langgraph_fabric_m365.runtime import (
-    _build_hosted_environment,
-    _build_hosted_sdk_configuration,
+    _build_m365_environment,
+    _build_m365_sdk_configuration,
 )
 
 
@@ -38,7 +38,7 @@ class _FakeState:
         self._values.pop(key, None)
 
 
-def _make_settings(**overrides: str) -> AppSettings:
+def _make_settings(**overrides: str) -> M365Settings:
     base = {
         "azure_openai_endpoint": "https://example.services.ai.azure.com/api/projects/demo",
         "azure_openai_deployment_name": "gpt-5.4",
@@ -63,13 +63,13 @@ def _make_settings(**overrides: str) -> AppSettings:
         "fabric_oauth_connection_name": "FabricOAuth2",
     }
     base.update(overrides)
-    return AppSettings.model_construct(**base)
+    return M365Settings.model_construct(**base)
 
 
-def test_build_hosted_sdk_configuration_uses_settings_values() -> None:
+def test_build_m365_sdk_configuration_uses_settings_values() -> None:
     settings = _make_settings()
 
-    sdk_config = _build_hosted_sdk_configuration(settings)
+    sdk_config = _build_m365_sdk_configuration(settings)
 
     assert sdk_config["CONNECTIONS"]["SERVICE_CONNECTION"]["SETTINGS"]["CLIENTID"] == (
         "11111111-1111-1111-1111-111111111111"
@@ -79,11 +79,11 @@ def test_build_hosted_sdk_configuration_uses_settings_values() -> None:
     )
 
 
-def test_build_hosted_sdk_configuration_raises_for_missing_required_setting() -> None:
+def test_build_m365_sdk_configuration_raises_for_missing_required_setting() -> None:
     settings = _make_settings(connections_service_connection_client_secret="")
 
     with pytest.raises(ValueError) as exc:
-        _build_hosted_sdk_configuration(settings)
+        _build_m365_sdk_configuration(settings)
 
     assert "connections_service_connection_client_secret" in str(exc.value)
 
@@ -124,7 +124,7 @@ def test_extract_sign_in_link_handles_direct_and_nested_shapes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_hosted_user_token_sends_adaptive_card_when_signin_required(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_get_m365_user_token_sends_adaptive_card_when_signin_required(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _make_settings()
 
     class _FakeState:
@@ -175,7 +175,7 @@ async def test_get_hosted_user_token_sends_adaptive_card_when_signin_required(mo
     )
     state = _FakeState()
 
-    token = await _get_hosted_user_token(
+    token = await _get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -195,7 +195,7 @@ async def test_get_hosted_user_token_sends_adaptive_card_when_signin_required(mo
 
 
 @pytest.mark.asyncio
-async def test_get_hosted_user_token_redeems_magic_code_and_disables_card(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_get_m365_user_token_redeems_magic_code_and_disables_card(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _make_settings()
 
     class _FakeState:
@@ -242,7 +242,7 @@ async def test_get_hosted_user_token_redeems_magic_code_and_disables_card(monkey
     )
     state = _FakeState()
 
-    token = await _get_hosted_user_token(
+    token = await _get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -360,19 +360,19 @@ async def test_disable_signin_card_does_nothing_when_no_activity_id() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _get_hosted_user_token - additional paths
+# _get_m365_user_token - additional paths
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_get_hosted_user_token_returns_none_when_no_token_client() -> None:
+async def test_get_m365_user_token_returns_none_when_no_token_client() -> None:
     context = SimpleNamespace(
         adapter=SimpleNamespace(USER_TOKEN_CLIENT_KEY="UserTokenClient"),
         turn_state={},  # no client registered
     )
     state = _FakeState()
 
-    token = await _get_hosted_user_token(
+    token = await _get_m365_user_token(
         context=context,
         state=state,
         settings=_make_settings(),
@@ -383,7 +383,7 @@ async def test_get_hosted_user_token_returns_none_when_no_token_client() -> None
 
 
 @pytest.mark.asyncio
-async def test_get_hosted_user_token_returns_none_when_no_channel_id() -> None:
+async def test_get_m365_user_token_returns_none_when_no_channel_id() -> None:
     token_client = SimpleNamespace(user_token=SimpleNamespace(get_token=AsyncMock()))
     context = SimpleNamespace(
         adapter=SimpleNamespace(USER_TOKEN_CLIENT_KEY="UserTokenClient"),
@@ -391,7 +391,7 @@ async def test_get_hosted_user_token_returns_none_when_no_channel_id() -> None:
     )
     state = _FakeState()
 
-    token = await _get_hosted_user_token(
+    token = await _get_m365_user_token(
         context=context,
         state=state,
         settings=_make_settings(),
@@ -402,7 +402,7 @@ async def test_get_hosted_user_token_returns_none_when_no_channel_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_hosted_user_token_handles_404_and_prompts_signin(
+async def test_get_m365_user_token_handles_404_and_prompts_signin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A 404 from the token service should trigger the sign-in flow."""
@@ -443,7 +443,7 @@ async def test_get_hosted_user_token_handles_404_and_prompts_signin(
     )
     state = _FakeState()
 
-    token = await _get_hosted_user_token(
+    token = await _get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -456,7 +456,7 @@ async def test_get_hosted_user_token_handles_404_and_prompts_signin(
 
 
 @pytest.mark.asyncio
-async def test_get_hosted_user_token_handles_value_error_gracefully(
+async def test_get_m365_user_token_handles_value_error_gracefully(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A ValueError from the token lookup should not propagate."""
@@ -476,7 +476,7 @@ async def test_get_hosted_user_token_handles_value_error_gracefully(
     )
     state = _FakeState()
 
-    token = await _get_hosted_user_token(
+    token = await _get_m365_user_token(
         context=context,
         state=state,
         settings=settings,
@@ -488,13 +488,13 @@ async def test_get_hosted_user_token_handles_value_error_gracefully(
 
 
 # ---------------------------------------------------------------------------
-# _build_hosted_environment
+# _build_m365_environment
 # ---------------------------------------------------------------------------
 
 
-def test_build_hosted_environment_includes_all_required_settings_keys() -> None:
+def test_build_m365_environment_includes_all_required_settings_keys() -> None:
     settings = _make_settings()
-    env = _build_hosted_environment(settings)
+    env = _build_m365_environment(settings)
 
     assert env["MICROSOFT_APP_ID"] == settings.microsoft_app_id
     assert env["MICROSOFT_APP_PASSWORD"] == settings.microsoft_app_password
@@ -511,9 +511,9 @@ def test_build_hosted_environment_includes_all_required_settings_keys() -> None:
     )
 
 
-def test_build_hosted_environment_returns_dict_containing_os_env(monkeypatch) -> None:
-    """_build_hosted_environment merges OS env into the output dict."""
+def test_build_m365_environment_returns_dict_containing_os_env(monkeypatch) -> None:
+    """_build_m365_environment merges OS env into the output dict."""
     monkeypatch.setenv("TEST_UNIQUE_MARKER_VAR", "marker-value")
     settings = _make_settings()
-    env = _build_hosted_environment(settings)
+    env = _build_m365_environment(settings)
     assert env.get("TEST_UNIQUE_MARKER_VAR") == "marker-value"

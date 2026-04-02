@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from langgraph_fabric_core.core.config import AppSettings
+from langgraph_fabric_core.core.config import CoreSettings
 from langgraph_fabric_core.fabric.auth import AuthContext, FabricTokenProvider
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class FabricMcpClient:
     """Minimal JSON-RPC MCP client over HTTP."""
 
-    def __init__(self, settings: AppSettings, token_provider: FabricTokenProvider):
+    def __init__(self, settings: CoreSettings, token_provider: FabricTokenProvider):
         self._settings = settings
         self._token_provider = token_provider
         self._request_id = 0

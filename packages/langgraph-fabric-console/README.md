@@ -7,6 +7,7 @@ Streams agent responses directly to the terminal.
 
 | Module | Purpose |
 | --- | --- |
+| `config.py` | Console-specific settings (`ConsoleSettings`) reading from `.env.console` |
 | `console.py` | Interactive terminal surface with streaming |
 | `main.py` | Entrypoint (`langgraph-fabric-console` script) |
 

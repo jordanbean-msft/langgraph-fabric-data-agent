@@ -52,7 +52,7 @@ def build_fabric_tool(client: FabricMcpClient):
         auth_context = AuthContext(
             mode=state["auth_mode"],
             user_id=state["user_id"],
-            hosted_user_token=state.get("fabric_user_token"),
+            user_token=state.get("fabric_user_token"),
         )
 
         try:

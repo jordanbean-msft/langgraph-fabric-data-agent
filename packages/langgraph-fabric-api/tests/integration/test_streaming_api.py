@@ -64,7 +64,7 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
     )
 
     assert captured.get("fabric_user_token") == "obo-fabric-token"
-    assert captured.get("auth_mode") == "hosted"
+    assert captured.get("auth_mode") == "api"
     assert captured.get("channel") == "api"
 
 

@@ -1,10 +1,10 @@
 """API entrypoint."""
 
 import uvicorn
-from langgraph_fabric_core.core.config import get_settings
 from langgraph_fabric_core.core.logging import configure_logging
 
 from langgraph_fabric_api.app import app
+from langgraph_fabric_api.config import get_settings
 
 
 def main() -> None:
