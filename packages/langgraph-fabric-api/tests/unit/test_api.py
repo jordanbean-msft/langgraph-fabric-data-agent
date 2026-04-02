@@ -132,23 +132,24 @@ def test_get_token_obo_missing_tenant_returns_500(fake_settings):
 
 def test_chat_stream_obo_auth_error_returns_401(monkeypatch, fake_settings):
     """When OBO exchange fails with ClientAuthenticationError, returns HTTP 401."""
-    from collections.abc import AsyncIterator
-
     from azure.core.exceptions import ClientAuthenticationError
 
-    class FakeOrchestrator:
-        async def stream(self, **_kwargs) -> AsyncIterator[str]:
-            yield "response"
-
-    def fake_get_orchestrator():
-        return FakeOrchestrator()
-
-    async def failing_obo(_bearer_token: str, _settings, _scope: str) -> str:
-        raise ClientAuthenticationError("Invalid token")
-
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", fake_get_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", failing_obo)
+
+    class FakeOnBehalfOfCredential:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get_token(self, _scope: str):
+            raise ClientAuthenticationError("Invalid token")
+
+    monkeypatch.setattr(api_module, "OnBehalfOfCredential", FakeOnBehalfOfCredential)
 
     client = TestClient(api_module.app, raise_server_exceptions=False)
     response = client.post(

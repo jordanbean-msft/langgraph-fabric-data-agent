@@ -18,7 +18,9 @@ def test_create_chat_model_uses_foundry_project_scope(monkeypatch, settings_fixt
         def __init__(self, **kwargs):
             captured["kwargs"] = kwargs
 
-    monkeypatch.setattr("langgraph_fabric_core.llm.factory.DefaultAzureCredential", fake_default_credential)
+    monkeypatch.setattr(
+        "langgraph_fabric_core.llm.factory.DefaultAzureCredential", fake_default_credential
+    )
     monkeypatch.setattr(
         "langgraph_fabric_core.llm.factory.get_bearer_token_provider",
         fake_get_bearer_token_provider,
@@ -55,7 +57,9 @@ def test_create_chat_model_normalizes_legacy_project_api_versions(monkeypatch, s
 
     settings_fixture.azure_openai_api_version = "preview"
 
-    monkeypatch.setattr("langgraph_fabric_core.llm.factory.DefaultAzureCredential", fake_default_credential)
+    monkeypatch.setattr(
+        "langgraph_fabric_core.llm.factory.DefaultAzureCredential", fake_default_credential
+    )
     monkeypatch.setattr(
         "langgraph_fabric_core.llm.factory.get_bearer_token_provider",
         fake_get_bearer_token_provider,
@@ -89,7 +93,9 @@ def test_create_chat_model_uses_previous_response_id_for_non_project_endpoints(
     settings_fixture.azure_openai_endpoint = "https://example.openai.azure.com"
     settings_fixture.azure_openai_api_version = "2024-10-21"
 
-    monkeypatch.setattr("langgraph_fabric_core.llm.factory.DefaultAzureCredential", fake_default_credential)
+    monkeypatch.setattr(
+        "langgraph_fabric_core.llm.factory.DefaultAzureCredential", fake_default_credential
+    )
     monkeypatch.setattr(
         "langgraph_fabric_core.llm.factory.get_bearer_token_provider",
         fake_get_bearer_token_provider,

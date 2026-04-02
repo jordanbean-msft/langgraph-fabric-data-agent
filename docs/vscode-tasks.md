@@ -46,8 +46,17 @@ The dev tunnel tasks prompt for these inputs:
 For a normal first-time local setup in VS Code:
 
 1. Run `sync-venv`.
-2. Run `lint` and `test-all` (or individual package tasks such as `test-core`, `test-api`).
-3. Run `run-console`, `run-api`, or `run-m365` depending on the surface you want to test.
+2. Install the local Git hooks so commits run Ruff and pushes run the full test suite:
+
+```bash
+uv run pre-commit install --hook-type pre-commit --hook-type pre-push
+```
+
+3. Run `lint` and `test-all` (or individual package tasks such as `test-core`, `test-api`).
+4. Run `run-console`, `run-api`, or `run-m365` depending on the surface you want to test.
+
+> [!IMPORTANT]
+> The hook configuration lives in `.pre-commit-config.yaml`, but Git does not activate hooks automatically for a fresh clone. You must run `uv run pre-commit install --hook-type pre-commit --hook-type pre-push` once per local clone.
 
 For Microsoft 365 testing with a dev tunnel:
 

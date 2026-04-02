@@ -58,8 +58,6 @@ def test_create_server_app_with_no_channel_factory() -> None:
 
 
 def test_main_starts_server_on_configured_port(monkeypatch) -> None:
-    import asyncio
-
     settings = SimpleNamespace(
         log_level="INFO",
         log_level_override=None,
@@ -95,8 +93,6 @@ def test_main_starts_server_on_configured_port(monkeypatch) -> None:
 
 def test_resolve_agent_auth_configuration_uses_connection_manager() -> None:
     """When adapter has connection_manager, auth config uses it."""
-    from microsoft_agents.hosting.core.authorization import AgentAuthConfiguration
-
     # Mock a connection manager with get_default_connection_configuration
     mock_connection_config = SimpleNamespace(CLIENT_ID="cm-app-id")
     mock_connection_manager = SimpleNamespace(
