@@ -52,17 +52,17 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 - `llm/factory.py`: Azure OpenAI / Foundry chat model factory
 
 ### langgraph-fabric-api (`packages/langgraph-fabric-api/src/langgraph_fabric_api/`)
-- `config.py`: `ApiSettings(CoreSettings)` reading from `.env.api` — adds OBO fields
+- `config.py`: `ApiSettings(CoreSettings)` reading from `packages/langgraph-fabric-api/.env` — adds OBO fields
 - `app.py`: FastAPI endpoints
 - `main.py`: API entrypoint
 
 ### langgraph-fabric-console (`packages/langgraph-fabric-console/src/langgraph_fabric_console/`)
-- `config.py`: `ConsoleSettings(CoreSettings)` reading from `.env.console`
+- `config.py`: `ConsoleSettings(CoreSettings)` reading from `packages/langgraph-fabric-console/.env`
 - `console.py`: terminal experience with streaming
 - `main.py`: console entrypoint
 
 ### langgraph-fabric-m365 (`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/`)
-- `config.py`: `M365Settings(CoreSettings)` reading from `.env.m365` — adds M365 bot fields
+- `config.py`: `M365Settings(CoreSettings)` reading from `packages/langgraph-fabric-m365/.env` — adds M365 bot fields
 - `app.py`: M365 Agents SDK adapter bridge and route handlers
 - `oauth.py`: M365 OAuth adaptive card flow, magic code handling, and M365 token resolution
 - `runtime.py`: M365 runtime env and SDK configuration
@@ -77,7 +77,7 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 ## Configuration rules
 
 - `CoreSettings` lives in `langgraph-fabric-core` and contains only shared settings (Azure OpenAI, Fabric MCP, logging, port, and optional microsoft_app_id/tenant_id for device-code auth).
-- Each client package (`api`, `console`, `m365`) defines its own settings class that extends `CoreSettings` and reads from its own env file (`.env.api`, `.env.console`, `.env.m365`).
+- Each client package (`api`, `console`, `m365`) defines its own settings class that extends `CoreSettings` and reads from a `.env` file in its own package directory.
 - Use the package-local `get_settings()` in each client package, not the core one.
 
 ## Dependency rules

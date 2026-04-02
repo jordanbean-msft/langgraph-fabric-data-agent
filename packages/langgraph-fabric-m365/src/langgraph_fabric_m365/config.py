@@ -1,10 +1,13 @@
 """M365-specific configuration settings."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from langgraph_fabric_core.core.config import CoreSettings
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
+
+_ENV_FILE = Path(__file__).parents[2] / ".env"
 
 
 class M365Settings(CoreSettings):
@@ -12,11 +15,11 @@ class M365Settings(CoreSettings):
 
     Extends CoreSettings with fields required for the M365 bot authentication,
     Bot Service OAuth connection, and M365 Agents SDK service connection.
-    Reads from `.env.m365` in addition to environment variables.
+    Reads from `.env` in the package directory.
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env.m365",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,

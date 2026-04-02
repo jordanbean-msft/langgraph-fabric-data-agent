@@ -12,7 +12,7 @@ The `langgraph-fabric-m365` package is an M365 adapter that bridges the Fabric D
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) installed.
 - An Azure Bot resource configured with a Bot Service OAuth connection pointing at your Entra app — see [app-registration.md](app-registration.md) and [azure-bot-service.md](azure-bot-service.md).
-- A `.env.m365` file at the repository root with all required variables (see [Environment variables](#environment-variables) below).
+- A `.env` file in `packages/langgraph-fabric-m365/` with all required variables (see [Environment variables](#environment-variables) below).
 - A public HTTPS URL for the bot messaging endpoint. For local development, use `devtunnel` or a similar tool.
 - Access to a Microsoft 365 tenant where you can install the app in Teams or test in Copilot Chat.
 
@@ -32,9 +32,9 @@ See [azure-bot-service.md](azure-bot-service.md) for step-by-step instructions o
 
 ## Setup
 
-### 1. Configure the .env.m365 file
+### 1. Configure the .env file
 
-Copy `.env.m365.example` to `.env.m365` and fill in the M365 adapter values:
+Copy `packages/langgraph-fabric-m365/.env.example` to `packages/langgraph-fabric-m365/.env` and fill in the M365 adapter values:
 
 ```ini
 # Azure Bot / M365 settings
@@ -113,7 +113,7 @@ See [azure-bot-service.md](azure-bot-service.md) for the full app package refere
 
 ## Environment variables
 
-All settings are read from `.env.m365` via the M365 settings model. The following variables are required for the M365 adapter:
+All settings are read from `packages/langgraph-fabric-m365/.env` via the M365 settings model. The following variables are required for the M365 adapter:
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
@@ -136,4 +136,4 @@ All settings are read from `.env.m365` via the M365 settings model. The followin
 | `PORT` | No | `8000` | Port the adapter listens on |
 | `LOG_LEVEL` | No | `INFO` | Root log level |
 
-See [.env.m365.example](../.env.m365.example) for a full template.
+See [packages/langgraph-fabric-m365/.env.example](../packages/langgraph-fabric-m365/.env.example) for a full template.

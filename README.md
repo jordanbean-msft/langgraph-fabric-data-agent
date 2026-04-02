@@ -55,13 +55,13 @@ uv sync --all-packages --extra dev
 
 ```bash
 # Console
-cp .env.console.example .env.console
+cp packages/langgraph-fabric-console/.env.example packages/langgraph-fabric-console/.env
 
 # FastAPI server
-cp .env.api.example .env.api
+cp packages/langgraph-fabric-api/.env.example packages/langgraph-fabric-api/.env
 
 # M365 adapter (Teams / Copilot Chat)
-cp .env.m365.example .env.m365
+cp packages/langgraph-fabric-m365/.env.example packages/langgraph-fabric-m365/.env
 ```
 
 3. Fill the Azure OpenAI and Fabric MCP values in the copied file.
