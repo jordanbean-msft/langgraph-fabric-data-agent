@@ -88,6 +88,7 @@ uv run pytest tests/integration
 | Guide | Contents |
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Per-package module breakdown and dependency rules |
+| [docs/api-guide.md](docs/api-guide.md) | API authentication setup and streaming endpoint usage |
 | [docs/app-registration.md](docs/app-registration.md) | Entra app registration reference, API permissions, and environment variable mapping |
 | [docs/azure-bot-service.md](docs/azure-bot-service.md) | Azure Bot Service setup, secret rotation, OAuth connection, and app package |
 | [docs/vscode-tasks.md](docs/vscode-tasks.md) | VS Code task reference and recommended flows |

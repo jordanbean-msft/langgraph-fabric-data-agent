@@ -52,6 +52,16 @@ api://botId-3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae/access_as_user
 
 Standard Microsoft Teams and Office client IDs are pre-authorized for this scope so users are not prompted for additional consent inside Teams or Copilot Chat.
 
+The following authorized client applications should be added as pre-authorized for the `access_as_user` scope:
+
+| Application | Client ID |
+| --- | --- |
+| Microsoft Teams (Desktop & Mobile) | `1fec8e78-bce4-4aaf-ab1b-5451cc387264` |
+| Microsoft Teams (Web) | `5e3ce6c0-2b1f-4285-8d4b-75ee78787346` |
+| Microsoft Office | `4765445b-32c6-49b0-83e6-1d93765276ca` |
+| Microsoft 365 Copilot (Web) | `0ec893e0-5785-4de6-99da-4ed124e5296c` |
+| Microsoft 365 Copilot (Desktop) | `c0ab8ce9-e9a0-42e7-b064-33d422df41f1` |
+
 ## Client secrets
 
 Two secrets exist for this registration. Retrieve and rotate them using the Azure CLI:

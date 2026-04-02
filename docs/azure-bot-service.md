@@ -24,7 +24,7 @@ Current configuration notes:
 - `msteams`, `m365extensions`, `webchat`, and `directline` channels are enabled.
 - The `FabricOAuth2` connection uses `Azure Active Directory v2` with the Fabric scope `https://api.fabric.microsoft.com/.default`.
 - Application Insights is not configured on the bot resource.
-- [appPackage/manifest.json](../appPackage/manifest.json) contains placeholder website URLs and `validDomains` — update that file before packaging the Microsoft 365 app.
+- [appPackage/manifest.sample.json](../appPackage/manifest.sample.json) contains placeholder website URLs and `validDomains` — copy it to `manifest.json` and update the values before packaging the Microsoft 365 app.
 
 > [!IMPORTANT]
 > The messaging endpoint uses a dev tunnel URL by default. Update the endpoint whenever the tunnel hostname changes.
@@ -179,7 +179,7 @@ az bot msteams show \
 
 ## Update the Microsoft 365 app package
 
-Before uploading the package, update [appPackage/manifest.json](../appPackage/manifest.json) so these values match your public hostname and bot registration:
+Before uploading the package, copy [appPackage/manifest.sample.json](../appPackage/manifest.sample.json) to `appPackage/manifest.json` and update these values to match your public hostname and bot registration:
 
 - `developer.websiteUrl`
 - `developer.privacyUrl`
