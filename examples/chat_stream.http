@@ -1,0 +1,109 @@
+###############################################################################
+# Chat Stream API Example: OAuth 2.0 Authorization Code Flow with PKCE
+###############################################################################
+# This example shows the Authorization Code Flow with PKCE (Proof Key for
+# Public Client Exchange), which is the recommended flow for public clients
+# (apps without a client secret) like this REST Client example.
+#
+# Flow:
+# 1. Generate PKCE parameters (code_verifier and code_challenge)
+# 2. Request authorization code from Entra ID (browser opens for sign-in)
+# 3. Exchange authorization code + code_verifier for access token
+# 4. Call the API with the token
+#
+# Prerequisites:
+# - API_CLIENT_ID: Your API app registration Client ID (resource/audience)
+# - CALLER_CLIENT_ID: Your calling app registration Client ID (public client)
+# - TENANT_ID: Your Azure tenant ID (or "common")
+# - API_BASE_URL: The API server URL (localhost:8000 for local development)
+###############################################################################
+
+### Configuration
+@apiClientId = <your-api-app-client-id>
+@callerClientId = <your-caller-public-client-id>
+@tenantId = common
+@apiBaseUrl = http://localhost:8000
+@entraAuthority = https://login.microsoftonline.com
+@redirectUri = http://localhost:3000/callback
+
+### PKCE Parameters (generate new values for each flow)
+# code_verifier: Random URL-safe string (43-128 chars)
+# For production, generate: import secrets; secrets.token_urlsafe(64)
+# For testing, use: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_
+@codeVerifier = ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
+
+# code_challenge: SHA256(code_verifier) base64url encoded
+# For the test verifier above, the code_challenge is:
+@codeChallenge = rEGabrheVdbw0dVhvVk_h7YDVqV9k5X33z6xvPLs0cI
+
+###############################################################################
+# REQUEST 1: Authorization code request
+# Opens browser for user sign-in, returns authorization code
+###############################################################################
+
+# Copy this URL and open it in your browser, or use REST Client's "Send Request"
+# The browser will redirect to @redirectUri with the authorization code
+#
+# Full URL:
+# https://login.microsoftonline.com/common/oauth2/v2.0/authorize?
+#   client_id=<CALLER_CLIENT_ID>
+#   &response_type=code
+#   &scope=api://<API_CLIENT_ID>/.default
+#   &redirect_uri=http://localhost:3000/callback
+#   &code_challenge=<code_challenge>
+#   &code_challenge_method=S256
+#   &prompt=select_account
+
+GET {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/authorize?client_id={{callerClientId}}&response_type=code&scope=api%3A%2F%2F{{apiClientId}}%2F.default&redirect_uri={{redirectUri}}&code_challenge={{codeChallenge}}&code_challenge_method=S256&prompt=select_account
+
+###
+# NEXT STEPS:
+# 1. Click "Send Request" above or copy and open the URL in your browser
+# 2. Sign in with your Microsoft account
+# 3. You'll be redirected to http://localhost:3000/callback?code=<AUTH_CODE>
+# 4. Copy the authorization code from the URL
+# 5. Paste it as @authorizationCode below
+# 6. Run REQUEST 2
+
+###############################################################################
+# REQUEST 2: Token exchange
+# Exchange the authorization code + code_verifier for access token
+###############################################################################
+
+@authorizationCode = <paste-authorization-code-from-redirect-uri>
+
+POST {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&client_id={{callerClientId}}&code={{authorizationCode}}&redirect_uri={{redirectUri}}&code_verifier={{codeVerifier}}&scope=api%3A%2F%2F{{apiClientId}}%2F.default
+
+###
+# Response (example):
+# {
+#   "token_type": "Bearer",
+#   "scope": "api://your-api-client-id/.default",
+#   "expires_in": 3599,
+#   "ext_expires_in": 3599,
+#   "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ik5rRkJRMFUzUVRVeFFraEZSRE00UWpSR1JEQkJRVEJEVVRaR09FWkVRZz09In0..."
+# }
+#
+# NEXT STEP:
+# 1. Copy the access_token value (the long string after "access_token": ")
+# 2. Paste it as @apiAccessToken below
+# 3. Run REQUEST 3 to call the API
+
+###############################################################################
+# REQUEST 3: Call the API with the access token
+# Use the token obtained from REQUEST 2 to authenticate to the API
+###############################################################################
+
+@apiAccessToken = <paste-access_token-from-request-2-response>
+
+POST {{apiBaseUrl}}/chat/stream
+Authorization: Bearer {{apiAccessToken}}
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "prompt": "Summarize yesterday's sales by region"
+}

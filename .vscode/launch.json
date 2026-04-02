@@ -92,11 +92,29 @@
       "type": "debugpy",
       "request": "launch",
       "module": "pytest",
-      "args": ["-v"],
+      "args": [
+        "-v"
+      ],
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "python": "${workspaceFolder}/.venv/bin/python",
       "justMyCode": false
+    }
+  ],
+  "compounds": [
+    {
+      "name": "API + M365 adapter",
+      "configurations": [
+        "API: FastAPI (uvicorn)",
+        "Hosted: M365 adapter"
+      ]
+    },
+    {
+      "name": "API + Console",
+      "configurations": [
+        "API: FastAPI (uvicorn)",
+        "Console: interactive chat"
+      ]
     }
   ]
 }

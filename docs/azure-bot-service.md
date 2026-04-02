@@ -8,14 +8,14 @@ ms.date: 2026-04-01
 
 Fill in the details below with your own Azure resource identifiers before running any commands. The values shown are placeholders.
 
-| Property | Value |
-| --- | --- |
-| Subscription | `<YOUR_SUBSCRIPTION_ID>` |
-| Resource group | `<YOUR_RESOURCE_GROUP>` |
-| Bot resource | `<YOUR_BOT_NAME>` |
-| Microsoft app ID | `<YOUR_APP_CLIENT_ID>` |
-| Tenant ID | `<YOUR_TENANT_ID>` |
-| OAuth connection | `FabricOAuth2` |
+| Property         | Value                    |
+| ---------------- | ------------------------ |
+| Subscription     | `<YOUR_SUBSCRIPTION_ID>` |
+| Resource group   | `<YOUR_RESOURCE_GROUP>`  |
+| Bot resource     | `<YOUR_BOT_NAME>`        |
+| Microsoft app ID | `<YOUR_APP_CLIENT_ID>`   |
+| Tenant ID        | `<YOUR_TENANT_ID>`       |
+| OAuth connection | `FabricOAuth2`           |
 
 Current configuration notes:
 
@@ -57,7 +57,7 @@ BOT_APP_PASSWORD="$(az ad app credential reset \
   -o tsv)"
 ```
 
-Azure only returns the new secret once. Save it immediately and set it in `.env` as both `MICROSOFT_APP_PASSWORD` and `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET`.
+Azure only returns the new secret once. Save it immediately and set it in `packages/langgraph-fabric-m365/.env` as both `MICROSOFT_APP_PASSWORD` and `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET`.
 
 ## Create the bot resource
 

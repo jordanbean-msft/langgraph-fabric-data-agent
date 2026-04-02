@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from langgraph_fabric_console.console import run_console
@@ -14,7 +14,7 @@ async def test_run_console_streams_response_and_updates_history() -> None:
     orchestrator = FakeOrchestrator()
     inputs = iter(["what is revenue?", ""])
 
-    with patch("langgraph_fabric_console.console.asyncio.to_thread", new=AsyncMock(side_effect=inputs)):
+    with patch("rich.console.Console.input", side_effect=inputs):
         with patch("builtins.print"):
             await run_console(orchestrator)
 
@@ -30,7 +30,7 @@ async def test_run_console_exits_on_empty_input() -> None:
 
     orchestrator = FakeOrchestrator()
 
-    with patch("langgraph_fabric_console.console.asyncio.to_thread", new=AsyncMock(return_value="")):
+    with patch("rich.console.Console.input", return_value=""):
         with patch("builtins.print"):
             await run_console(orchestrator)
 
