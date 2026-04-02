@@ -4,6 +4,10 @@ description: Python monorepo sample showing a LangGraph agent calling a Fabric D
 ms.date: 2026-04-01
 ---
 
+[![CI](https://github.com/jordanbean-msft/langgraph-fabric-data-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/jordanbean-msft/langgraph-fabric-data-agent/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/jordanbean-msft/langgraph-fabric-data-agent)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
+
 ## Overview
 
 This repository demonstrates a LangGraph-based AI agent that can call MCP servers or run in chat-only mode.
