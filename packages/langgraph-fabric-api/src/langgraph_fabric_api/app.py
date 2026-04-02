@@ -21,6 +21,15 @@ from langgraph_fabric_api.config import ApiSettings, get_settings
 logger = logging.getLogger(__name__)
 
 
+def _format_sse_event(event: str, data: str) -> bytes:
+    """Format an SSE event, prefixing each payload line with `data:`."""
+    data_lines = data.splitlines() or [""]
+    lines = [f"event: {event}"]
+    lines.extend(f"data: {line}" for line in data_lines)
+    lines.append("")
+    return "\n".join(lines).encode("utf-8")
+
+
 def _extract_bearer_token(request: Request) -> str:
     """Extract Bearer token from Authorization header.
 
@@ -135,9 +144,9 @@ async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResp
             fabric_user_token=fabric_token,
         ):
             if chunk.startswith("\n[tool]"):
-                yield f"event: tool_status\ndata: {chunk.strip()}\n\n".encode()
+                yield _format_sse_event("tool_status", chunk.strip())
             else:
-                yield f"event: text\ndata: {chunk}\n\n".encode()
-        yield b"event: done\ndata: [DONE]\n\n"
+                yield _format_sse_event("text", chunk)
+        yield _format_sse_event("done", "[DONE]")
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

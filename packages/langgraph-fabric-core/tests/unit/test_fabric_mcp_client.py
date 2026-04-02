@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import pytest
@@ -109,3 +110,67 @@ async def test_unsupported_content_type_raises(settings_fixture):
 
     with pytest.raises(RuntimeError, match="application/json or text/event-stream"):
         await client.initialize(auth)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_json_response_id_mismatch_raises(settings_fixture):
+    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1")
+
+    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+        return_value=Response(200, json={"jsonrpc": "2.0", "id": 999, "result": {}})
+    )
+
+    with pytest.raises(RuntimeError, match="MCP response id mismatch"):
+        await client.initialize(auth)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_requests_keep_distinct_request_ids(settings_fixture, monkeypatch):
+    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1")
+
+    captured_request_ids: list[int] = []
+
+    class _FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+    class _FakeStream:
+        async def __aenter__(self) -> _FakeResponse:
+            # Yield control so two requests can overlap inside _rpc.
+            await asyncio.sleep(0)
+            return _FakeResponse()
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class _FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        def stream(self, *_args, **_kwargs) -> _FakeStream:
+            return _FakeStream()
+
+    async def _fake_read_streamable_http_response(_response, request_id: int):
+        captured_request_ids.append(request_id)
+        await asyncio.sleep(0)
+        return {"jsonrpc": "2.0", "id": request_id, "result": {"tools": []}}
+
+    monkeypatch.setattr(
+        "langgraph_fabric_core.fabric.mcp_client.httpx.AsyncClient", _FakeAsyncClient
+    )
+    monkeypatch.setattr(
+        client, "_read_streamable_http_response", _fake_read_streamable_http_response
+    )
+
+    await asyncio.gather(client.list_tools(auth), client.list_tools(auth))
+
+    assert sorted(captured_request_ids) == [1, 2]

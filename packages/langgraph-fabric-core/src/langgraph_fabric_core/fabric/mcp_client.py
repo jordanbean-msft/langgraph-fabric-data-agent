@@ -44,7 +44,13 @@ class FabricMcpClient:
             body = await response.aread()
             data = json.loads(body.decode("utf-8"))
             if isinstance(data, dict):
-                return data
+                if "result" in data or "error" in data:
+                    if data.get("id") != request_id:
+                        raise RuntimeError(
+                            f"MCP response id mismatch: expected {request_id}, got {data.get('id')}"
+                        )
+                    return data
+                raise RuntimeError("MCP JSON response missing JSON-RPC result/error")
             raise RuntimeError("MCP JSON response must be a JSON object")
 
         if "text/event-stream" not in content_type:
@@ -76,9 +82,6 @@ class FabricMcpClient:
         for message in reversed(messages):
             if message.get("id") == request_id and ("result" in message or "error" in message):
                 return message
-        for message in reversed(messages):
-            if "result" in message or "error" in message:
-                return message
 
         raise RuntimeError("MCP stream ended without a JSON-RPC response message")
 
@@ -86,10 +89,11 @@ class FabricMcpClient:
         self, method: str, params: dict[str, Any], auth_context: AuthContext
     ) -> dict[str, Any]:
         token = await self._token_provider.get_token(auth_context)
-        self._request_id += 1
+        request_id = self._request_id + 1
+        self._request_id = request_id
         payload = {
             "jsonrpc": "2.0",
-            "id": self._request_id,
+            "id": request_id,
             "method": method,
             "params": params,
         }
@@ -99,7 +103,7 @@ class FabricMcpClient:
             "Accept": "text/event-stream, application/json",
         }
 
-        logger.info("MCP request method=%s id=%s", method, self._request_id)
+        logger.info("MCP request method=%s id=%s", method, request_id)
         async with httpx.AsyncClient(
             timeout=self._settings.fabric_data_agent_timeout_seconds
         ) as client:
@@ -110,7 +114,7 @@ class FabricMcpClient:
                 json=payload,
             ) as response:
                 response.raise_for_status()
-                data = await self._read_streamable_http_response(response, self._request_id)
+                data = await self._read_streamable_http_response(response, request_id)
 
         if "error" in data:
             raise RuntimeError(f"MCP error: {data['error']}")
