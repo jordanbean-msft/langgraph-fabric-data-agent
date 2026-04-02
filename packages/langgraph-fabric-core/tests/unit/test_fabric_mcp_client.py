@@ -178,3 +178,121 @@ async def test_concurrent_requests_keep_distinct_request_ids(settings_fixture, m
     await asyncio.gather(client.list_tools(auth), client.list_tools(auth))
 
     assert sorted(captured_request_ids) == [1, 2]
+
+
+# ===== Protocol Error Handling Tests =====
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_mcp_rpc_error_response_is_raised(settings_fixture):
+    """When MCP returns an error message, _rpc should raise RuntimeError."""
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
+
+    respx.post(server.url).mock(
+        return_value=_sse_response(
+            {"jsonrpc": "2.0", "id": 1, "error": {"code": -1, "message": "Unknown method"}}
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="MCP error"):
+        await client.initialize(auth)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_json_response_without_result_or_error_raises(settings_fixture):
+    """JSON response lacking result or error should raise RuntimeError."""
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
+
+    respx.post(server.url).mock(return_value=Response(200, json={"jsonrpc": "2.0", "id": 1}))
+
+    with pytest.raises(RuntimeError, match="missing JSON-RPC result/error"):
+        await client.initialize(auth)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_json_response_not_dict_raises(settings_fixture):
+    """JSON response that is not a dict should raise RuntimeError."""
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
+
+    respx.post(server.url).mock(return_value=Response(200, json=[1, 2, 3]))
+
+    with pytest.raises(RuntimeError, match="must be a JSON object"):
+        await client.initialize(auth)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_sse_with_comments_and_trailing_data(settings_fixture):
+    """SSE response with comment lines and incomplete trailing data should be handled."""
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
+
+    sse_content = ':this is a comment\ndata: {"jsonrpc": "2.0", "id": 1, "result": {}}\n\n'
+
+    respx.post(server.url).mock(
+        return_value=Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=sse_content.encode("utf-8"),
+        )
+    )
+
+    await client.initialize(auth)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_call_tool_with_empty_response_content(settings_fixture):
+    """call_tool with empty content list should return empty string."""
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
+
+    respx.post(server.url).mock(
+        return_value=_sse_response({"jsonrpc": "2.0", "id": 1, "result": {"content": []}})
+    )
+
+    result = await client.call_tool(
+        tool_name="query", arguments={"query": "test"}, auth_context=auth
+    )
+    assert result == ""
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_call_tool_filters_non_text_content(settings_fixture):
+    """call_tool should filter out non-text content types."""
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
+
+    respx.post(server.url).mock(
+        return_value=_sse_response(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "content": [
+                        {"type": "image", "data": "base64..."},
+                        {"type": "text", "text": "valid text"},
+                        {"type": "other", "value": "ignored"},
+                    ]
+                },
+            }
+        )
+    )
+
+    result = await client.call_tool(
+        tool_name="query", arguments={"query": "test"}, auth_context=auth
+    )
+    assert result == "valid text"

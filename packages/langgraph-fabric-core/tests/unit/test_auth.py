@@ -407,3 +407,64 @@ def test_get_authenticated_identity_handles_missing_claims(settings_fixture):
     identity = provider.get_authenticated_identity("https://api.fabric.microsoft.com/.default")
     assert identity.user_id == "unknown"
     assert identity.tenant_id == "unknown"
+
+
+# ===== Edge Case Tests =====
+
+
+@pytest.mark.asyncio
+async def test_get_token_local_mode_requires_non_empty_scope(settings_fixture):
+    """get_token with empty scope in local mode should raise ValueError."""
+    provider = TokenProvider(
+        settings_fixture,
+        default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token="token")),
+    )
+
+    with pytest.raises(ValueError, match="non-empty scope"):
+        await provider.get_token(AuthContext(mode="local", user_id="u1", scope=""))
+
+
+@pytest.mark.asyncio
+async def test_api_mode_returns_provided_token_directly(settings_fixture):
+    """In api mode, should return the pre-provided user_token."""
+    provider = TokenProvider(settings_fixture)
+
+    token = await provider.get_token(
+        AuthContext(
+            mode="api",
+            user_id="u1",
+            scope="https://api.fabric.microsoft.com/.default",
+            user_token="provided-token-123",
+        )
+    )
+
+    assert token == "provided-token-123"
+
+
+@pytest.mark.asyncio
+async def test_m365_mode_returns_provided_token_directly(settings_fixture):
+    """In m365 mode, should return the pre-provided user_token."""
+    provider = TokenProvider(settings_fixture)
+
+    token = await provider.get_token(
+        AuthContext(
+            mode="m365",
+            user_id="u1",
+            scope="https://api.fabric.microsoft.com/.default",
+            user_token="m365-token-xyz",
+        )
+    )
+
+    assert token == "m365-token-xyz"
+
+
+@pytest.mark.asyncio
+async def test_local_mode_no_scope_raises_value_error(settings_fixture):
+    """Local mode requires a scope; empty scope should raise ValueError."""
+    provider = TokenProvider(
+        settings_fixture,
+        default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token="token")),
+    )
+
+    with pytest.raises(ValueError, match="non-empty scope"):
+        await provider.get_token(AuthContext(mode="local", user_id="u1", scope=""))

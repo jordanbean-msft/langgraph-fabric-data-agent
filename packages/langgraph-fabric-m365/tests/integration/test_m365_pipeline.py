@@ -308,3 +308,55 @@ async def test_m365_sign_in_flow_then_message_uses_pending_prompt(
     responses = [call.args[0] for call in calls]
     assert any("Answer to pending question" == response for response in responses)
     assert state.get_value(PENDING_PROMPT_KEY) is None
+
+
+@pytest.mark.asyncio
+async def test_build_m365_agent_app_assembles_dependencies(monkeypatch) -> None:
+    """_build_m365_agent_app should correctly assemble dependencies and call create_m365_app."""
+    from langgraph_fabric_m365.main import _build_m365_agent_app
+
+    settings = _make_settings()
+
+    # Mock get_settings to return test settings
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.main.get_settings",
+        lambda: settings,
+    )
+
+    # Track what gets passed to create_m365_app
+    create_m365_app_calls = []
+
+    async def mock_create_m365_app(settings_arg, orchestrator_arg):
+        create_m365_app_calls.append(
+            {
+                "settings": settings_arg,
+                "orchestrator": orchestrator_arg,
+            }
+        )
+        return MagicMock()  # Return a fake agent app
+
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.main.create_m365_app",
+        mock_create_m365_app,
+    )
+
+    # Call _build_m365_agent_app
+    agent_app = await _build_m365_agent_app()
+
+    # Verify create_m365_app was called exactly once
+    assert len(create_m365_app_calls) == 1
+    call = create_m365_app_calls[0]
+
+    # Verify settings were passed through
+    assert call["settings"] is settings
+
+    # Verify an AgentOrchestrator instance was created with the correct dependencies
+    orchestrator = call["orchestrator"]
+    assert isinstance(orchestrator, AgentOrchestrator)
+
+    # Verify the orchestrator has a graph (which means it was initialized with model and tools)
+    assert hasattr(orchestrator, "_graph")
+    assert orchestrator._graph is not None
+
+    # Verify the returned app is from the mocked create_m365_app
+    assert isinstance(agent_app, MagicMock)
