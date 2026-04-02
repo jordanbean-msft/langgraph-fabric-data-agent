@@ -1,105 +1,89 @@
 ---
 title: API Guide
-description: How to authenticate and call the LangGraph Fabric Data Agent streaming API
+description: How to set up and call the LangGraph Fabric Data Agent REST API
 ms.date: 2026-04-01
 ---
 
 # API Guide
 
-The `langgraph-fabric-api` package exposes a FastAPI server with a Server-Sent Events streaming endpoint for querying the Fabric Data Agent. This guide covers authentication setup and how to call the endpoint from client code.
+The `langgraph-fabric-api` package is a standalone FastAPI server that exposes the Fabric Data Agent over HTTP. It accepts a text prompt and streams the agent's response back to the caller using Server-Sent Events (SSE).
+
+## Prerequisites
+
+- Python 3.12 and [uv](https://docs.astral.sh/uv/) installed.
+- An Azure CLI session (`az login`) with an account that has the Fabric permissions described in the [app registration guide](app-registration.md).
+- A `.env` file at the repository root with the required environment variables (see [Environment variables](#environment-variables) below).
+
+## Start the server
+
+```bash
+az login          # authenticate so DefaultAzureCredential can acquire a Fabric token
+uv run langgraph-fabric-api
+```
+
+The server starts on port `8000` by default. Override it with `PORT=<number>` in `.env`.
 
 ## Endpoints
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | Liveness probe — returns `{"status": "ok"}` |
-| `POST` | `/chat/stream` | Stream agent responses as Server-Sent Events |
+| `POST` | `/chat/stream` | Submit a prompt and stream the agent response |
 
 > [!NOTE]
-> The API endpoints are intentionally unauthenticated in this sample. All authentication is performed internally against Azure OpenAI and the Fabric Data Agent MCP endpoint.
+> The API endpoints are intentionally unauthenticated in this sample. Authentication is performed internally — the server acquires a Fabric access token using `DefaultAzureCredential` on behalf of the process identity (your `az login` session, a managed identity, or a workload identity).
 
-## Authentication
+## Authentication setup
 
-The API server itself does not require callers to authenticate. However, the underlying Fabric Data Agent calls always require a user identity. The `auth_mode` field in the request body controls how that token is obtained.
+The server uses [`DefaultAzureCredential`](https://learn.microsoft.com/azure/developer/python/sdk/authentication-overview) to obtain a delegated Fabric token. Before making API calls, ensure one of the following credential sources is available:
 
-### `auth_mode: "local"` (default)
+| Credential source | How to configure |
+| --- | --- |
+| Azure CLI | `az login` — simplest option for local development |
+| Managed Identity | Assign the managed identity the required Fabric roles; no additional configuration needed |
+| Workload Identity | Set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_FEDERATED_TOKEN_FILE` in the environment |
+| Service Principal (secret) | Set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_CLIENT_SECRET` in the environment |
 
-In local mode the server acquires a Fabric token using `DefaultAzureCredential`, falling back to an interactive device-code flow if ambient credentials are unavailable.
+The account or identity must have the Fabric delegated permissions listed in the [app registration guide](app-registration.md).
 
-**Setup:**
-
-1. Sign in with the Azure CLI before starting the server:
-
-   ```bash
-   az login
-   ```
-
-2. Ensure your signed-in account has the required Fabric permissions listed in the [app registration guide](app-registration.md).
-
-3. Start the API server:
-
-   ```bash
-   uv run langgraph-fabric-api
-   ```
-
-4. Send requests without a `fabric_user_token` (or leave it `null`):
-
-   ```json
-   {
-     "prompt": "What are the top 10 sales by region?",
-     "user_id": "alice@example.com",
-     "auth_mode": "local"
-   }
-   ```
-
-The server calls `DefaultAzureCredential.get_token` for the scope defined in `FABRIC_DATA_AGENT_SCOPE` (default: `https://api.fabric.microsoft.com/.default`).
-
-### `auth_mode: "hosted"` (Bot Service token)
-
-In hosted mode the caller supplies a Bot Service user token obtained via the M365 Agents SDK OAuth flow. This is used internally by the `langgraph-fabric-m365` adapter and is not normally called directly.
-
-```json
-{
-  "prompt": "What are the top 10 sales by region?",
-  "user_id": "alice@example.com",
-  "auth_mode": "hosted",
-  "fabric_user_token": "<bot-service-user-token>"
-}
-```
-
-The `fabric_user_token` value must be a delegated access token for the Fabric API scope (`https://api.fabric.microsoft.com/.default`) obtained through the Azure Bot Service OAuth connection.
+If no ambient credential is available, the server falls back to an interactive device-code flow.
 
 ## Request schema
 
 `POST /chat/stream`
 
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `prompt` | `string` | Yes | — | The user's question or instruction |
+| `user_id` | `string` | No | `"local-user"` | An identifier for the requesting user, used for correlation logging |
+
+**Example request body:**
+
 ```json
 {
-  "prompt": "string (required) — the user's question or instruction",
-  "user_id": "string (optional, default: \"local-user\") — identifier for the requesting user",
-  "auth_mode": "string (optional, default: \"local\") — \"local\" or \"hosted\"",
-  "fabric_user_token": "string | null (optional) — required when auth_mode is \"hosted\""
+  "prompt": "What are the top 10 sales by region?",
+  "user_id": "alice@example.com"
 }
 ```
 
 ## Response format
 
-The endpoint returns a `text/event-stream` response (Server-Sent Events).
-
-Each streamed chunk is a plain-text data frame:
+The endpoint returns a `text/event-stream` (SSE) response. Each chunk from the agent is delivered as a data frame:
 
 ```
-data: <chunk text>\n\n
+data: <chunk text>
+
 ```
 
-When the agent has finished, a terminal event is sent:
+When the agent finishes, a terminal event is emitted:
 
 ```
 event: done
 data: [DONE]
+
 ```
 
-Chunks contain partial LLM output tokens and may also include tool call progress messages, depending on the graph state. Consumers should concatenate `data:` payloads until the `done` event is received.
+Chunks contain partial LLM output tokens and may also include tool-call progress messages. Concatenate all `data:` payloads until the `done` event is received to assemble the full response.
 
 ## Example: Python client using `httpx`
 
@@ -110,7 +94,6 @@ url = "http://localhost:8000/chat/stream"
 payload = {
     "prompt": "What are the top 10 sales by region?",
     "user_id": "alice@example.com",
-    "auth_mode": "local",
 }
 
 with httpx.Client(timeout=120) as client:
@@ -127,15 +110,15 @@ with httpx.Client(timeout=120) as client:
 ## Example: Python client using `aiohttp`
 
 ```python
-import aiohttp
 import asyncio
+import aiohttp
+
 
 async def stream_chat(prompt: str) -> None:
     url = "http://localhost:8000/chat/stream"
     payload = {
         "prompt": prompt,
         "user_id": "alice@example.com",
-        "auth_mode": "local",
     }
 
     async with aiohttp.ClientSession() as session:
@@ -148,6 +131,7 @@ async def stream_chat(prompt: str) -> None:
                     if chunk == "[DONE]":
                         break
                     print(chunk, end="", flush=True)
+
 
 asyncio.run(stream_chat("What are the top 10 sales by region?"))
 ```
@@ -162,7 +146,6 @@ async function streamChat(prompt: string): Promise<void> {
     body: JSON.stringify({
       prompt,
       user_id: "alice@example.com",
-      auth_mode: "local",
     }),
   });
 
@@ -197,7 +180,7 @@ streamChat("What are the top 10 sales by region?");
 curl -s -N \
   -X POST http://localhost:8000/chat/stream \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "What are the top 10 sales by region?", "auth_mode": "local"}' \
+  -d '{"prompt": "What are the top 10 sales by region?", "user_id": "alice@example.com"}' \
 | while IFS= read -r line; do
     [[ "$line" == "data: [DONE]" ]] && break
     [[ "$line" == data:* ]] && printf '%s' "${line#data: }"
@@ -206,18 +189,17 @@ curl -s -N \
 
 ## Environment variables
 
-The API server reads all settings from `.env` via `langgraph_fabric_core/core/config.py`.
-Ensure these are set before starting the server:
+All settings are read from `.env` via the core settings model. The following variables are required to run the API server:
 
-| Variable | Purpose |
-| --- | --- |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI / Foundry project endpoint |
-| `AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME` | Chat model deployment name (e.g. `gpt-5.4`) |
-| `AZURE_OPENAI_API_VERSION` | API version (default: `2025-11-15-preview`) |
-| `FABRIC_DATA_AGENT_MCP_URL` | Fabric Data Agent MCP endpoint URL |
-| `FABRIC_DATA_AGENT_SCOPE` | OAuth scope for Fabric (default: `https://api.fabric.microsoft.com/.default`) |
-| `FABRIC_DATA_AGENT_TIMEOUT_SECONDS` | MCP call timeout (default: `120`) |
-| `PORT` | Listening port (default: `8000`) |
-| `LOG_LEVEL` | Root log level (default: `INFO`) |
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `AZURE_OPENAI_ENDPOINT` | Yes | — | Azure OpenAI / Foundry project endpoint |
+| `AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME` | Yes | — | Chat model deployment name (e.g. `gpt-4o`) |
+| `AZURE_OPENAI_API_VERSION` | No | `2025-11-15-preview` | Azure OpenAI API version |
+| `FABRIC_DATA_AGENT_MCP_URL` | Yes | — | Fabric Data Agent MCP endpoint URL |
+| `FABRIC_DATA_AGENT_SCOPE` | No | `https://api.fabric.microsoft.com/.default` | OAuth scope used to acquire the Fabric token |
+| `FABRIC_DATA_AGENT_TIMEOUT_SECONDS` | No | `120` | Maximum seconds to wait for an MCP response |
+| `PORT` | No | `8000` | Port the server listens on |
+| `LOG_LEVEL` | No | `INFO` | Root log level |
 
 See [.env.example](../.env.example) for a full template.
