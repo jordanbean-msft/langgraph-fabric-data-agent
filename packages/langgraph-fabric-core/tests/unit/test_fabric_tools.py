@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from langgraph_fabric_core.fabric.tools import build_fabric_tool
+from langgraph_fabric_core.fabric.tools import _resolve_query_argument_name, build_fabric_tool
 
 
 @pytest.mark.asyncio
@@ -88,3 +88,66 @@ async def test_build_fabric_tool_returns_error_message_on_mcp_failure() -> None:
 
     assert "Fabric Data Agent query failed:" in result
     assert "upstream failure" in result
+
+
+# ---------------------------------------------------------------------------
+# _resolve_query_argument_name edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_query_argument_name_returns_preferred_name_userquestion() -> None:
+    tool_def = {"inputSchema": {"properties": {"userQuestion": {}, "other": {}}}}
+    assert _resolve_query_argument_name(tool_def) == "userQuestion"
+
+
+def test_resolve_query_argument_name_returns_preferred_name_query() -> None:
+    tool_def = {"inputSchema": {"properties": {"query": {}, "extra": {}}}}
+    assert _resolve_query_argument_name(tool_def) == "query"
+
+
+def test_resolve_query_argument_name_returns_preferred_name_prompt() -> None:
+    tool_def = {"inputSchema": {"properties": {"prompt": {}}}}
+    assert _resolve_query_argument_name(tool_def) == "prompt"
+
+
+def test_resolve_query_argument_name_returns_preferred_name_question() -> None:
+    tool_def = {"inputSchema": {"properties": {"question": {}}}}
+    assert _resolve_query_argument_name(tool_def) == "question"
+
+
+def test_resolve_query_argument_name_returns_query_when_no_input_schema() -> None:
+    """Falls back to 'query' when inputSchema is absent."""
+    assert _resolve_query_argument_name({"name": "fabric_query"}) == "query"
+
+
+def test_resolve_query_argument_name_returns_query_when_properties_missing() -> None:
+    """Falls back to 'query' when inputSchema has no properties dict."""
+    tool_def = {"inputSchema": {"type": "object"}}
+    assert _resolve_query_argument_name(tool_def) == "query"
+
+
+def test_resolve_query_argument_name_falls_back_to_required_field() -> None:
+    """Falls back to required field when no preferred name is present."""
+    tool_def = {
+        "inputSchema": {
+            "properties": {"customField": {"type": "string"}},
+            "required": ["customField"],
+        }
+    }
+    assert _resolve_query_argument_name(tool_def) == "customField"
+
+
+def test_resolve_query_argument_name_falls_back_to_first_property() -> None:
+    """Falls back to first property when no preferred name and no required list."""
+    tool_def = {
+        "inputSchema": {
+            "properties": {"someField": {"type": "string"}},
+        }
+    }
+    assert _resolve_query_argument_name(tool_def) == "someField"
+
+
+def test_resolve_query_argument_name_returns_query_for_empty_properties() -> None:
+    """Falls back to 'query' when properties dict has no string keys."""
+    tool_def = {"inputSchema": {"properties": {}}}
+    assert _resolve_query_argument_name(tool_def) == "query"
