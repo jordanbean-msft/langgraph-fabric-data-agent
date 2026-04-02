@@ -9,10 +9,10 @@ from functools import lru_cache
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity.aio import OnBehalfOfCredential
 from fastapi import FastAPI, HTTPException, Request
-from langgraph_fabric_core.fabric.auth import FabricTokenProvider
-from langgraph_fabric_core.fabric.mcp_client import FabricMcpClient
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from langgraph_fabric_core.llm.factory import create_chat_model
+from langgraph_fabric_core.mcp.auth import TokenProvider
+from langgraph_fabric_core.mcp.client import McpClient
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
@@ -66,8 +66,8 @@ def _extract_user_id(token: str) -> str:
         return "unknown"
 
 
-async def _get_fabric_token_obo(bearer_token: str, settings: ApiSettings) -> str:
-    """Exchange the caller's JWT for a Fabric-scoped token via the OBO flow.
+async def _get_token_obo(bearer_token: str, settings: ApiSettings, scope: str) -> str:
+    """Exchange the caller's JWT for a scope-specific token via the OBO flow.
 
     Requires MICROSOFT_APP_ID, MICROSOFT_APP_PASSWORD, and MICROSOFT_TENANT_ID
     to be configured in the server's environment.
@@ -94,7 +94,7 @@ async def _get_fabric_token_obo(bearer_token: str, settings: ApiSettings) -> str
             client_secret=settings.microsoft_app_password,
             user_assertion=bearer_token,
         ) as credential:
-            token = await credential.get_token(settings.fabric_data_agent_scope)
+            token = await credential.get_token(scope)
         return token.token
     except ClientAuthenticationError as exc:
         logger.warning("OBO token exchange failed: %s", exc)
@@ -108,10 +108,10 @@ async def _get_fabric_token_obo(bearer_token: str, settings: ApiSettings) -> str
 def get_orchestrator() -> AgentOrchestrator:
     """Build and cache the default orchestrator instance."""
     settings = get_settings()
-    token_provider = FabricTokenProvider(settings)
-    fabric_client = FabricMcpClient(settings, token_provider)
+    token_provider = TokenProvider(settings)
+    mcp_clients = [McpClient(server, token_provider) for server in settings.mcp_servers]
     chat_model = create_chat_model(settings)
-    return AgentOrchestrator(chat_model, fabric_client)
+    return AgentOrchestrator(chat_model, mcp_clients)
 
 
 app = FastAPI(title="LangGraph Fabric Data Agent")
@@ -128,11 +128,19 @@ async def health() -> dict[str, str]:
 
 @app.post("/chat/stream")
 async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResponse:
-    # Auth check first — raises 401 before touching settings
-    bearer_token = _extract_bearer_token(http_request)
     settings = get_settings()
-    fabric_token = await _get_fabric_token_obo(bearer_token, settings)
+    bearer_token = _extract_bearer_token(http_request)
+    mcp_user_tokens: dict[str, str] = {}
+    tokens_by_scope: dict[str, str] = {}
+    for server in settings.mcp_servers:
+        if server.scope not in tokens_by_scope:
+            tokens_by_scope[server.scope] = await _get_token_obo(
+                bearer_token, settings, server.scope
+            )
+        mcp_user_tokens[server.name] = tokens_by_scope[server.scope]
+
     user_id = _extract_user_id(bearer_token)
+
     orchestrator = get_orchestrator()
 
     async def event_stream() -> AsyncIterator[bytes]:
@@ -141,7 +149,7 @@ async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResp
             channel="api",
             auth_mode="api",
             user_id=user_id,
-            fabric_user_token=fabric_token,
+            mcp_user_tokens=mcp_user_tokens,
         ):
             if chunk.startswith("\n[tool]"):
                 yield _format_sse_event("tool_status", chunk.strip())

@@ -29,7 +29,7 @@ def _make_chat_model(
 
 
 def _make_tool_call_message(
-    tool_name: str = "fabric_data_agent_query",
+    tool_name: str = "mcp_fabric",
     query: str = "test query",
 ) -> AIMessage:
     """Build an AIMessage that triggers a tool call."""
@@ -47,7 +47,7 @@ def _make_tool_call_message(
 
 
 def _make_simple_tool(
-    name: str = "fabric_data_agent_query",
+    name: str = "mcp_fabric",
     response: str = "tool result",
 ) -> StructuredTool:
     """Create a simple tool without InjectedState for workflow tests."""
@@ -67,7 +67,7 @@ def _make_state(**overrides) -> dict:
         "messages": [HumanMessage(content="test prompt")],
         "auth_mode": "local",
         "user_id": "test-user",
-        "fabric_user_token": None,
+        "mcp_user_tokens": {},
     }
     base.update(overrides)
     return base
@@ -77,7 +77,7 @@ def _make_state(**overrides) -> dict:
 async def test_build_graph_returns_direct_answer_when_no_tool_calls() -> None:
     """Graph routes to END when LLM answers without making tool calls."""
     mock_llm, mock_bound = _make_chat_model(direct_response="Here is the direct answer")
-    graph = build_graph(mock_llm, _make_simple_tool())
+    graph = build_graph(mock_llm, [_make_simple_tool()])
 
     result = await graph.ainvoke(_make_state())
 
@@ -95,11 +95,9 @@ async def test_build_graph_routes_through_tools_and_finalize_when_tool_called() 
         finalize_response="Synthesized: top 5 customers are ...",
     )
 
-    graph = build_graph(mock_llm, _make_simple_tool(response="Customer A, B, C"))
+    graph = build_graph(mock_llm, [_make_simple_tool(response="Customer A, B, C")])
 
-    result = await graph.ainvoke(
-        _make_state(messages=[HumanMessage(content="top 5 customers")])
-    )
+    result = await graph.ainvoke(_make_state(messages=[HumanMessage(content="top 5 customers")]))
 
     assert "Synthesized" in result["messages"][-1].content
     mock_bound.ainvoke.assert_awaited_once()
@@ -114,7 +112,7 @@ async def test_build_graph_finalize_includes_tool_output_in_synthesized_prompt()
         finalize_response="done",
     )
 
-    graph = build_graph(mock_llm, _make_simple_tool(response="TOOL_OUTPUT_12345"))
+    graph = build_graph(mock_llm, [_make_simple_tool(response="TOOL_OUTPUT_12345")])
 
     await graph.ainvoke(_make_state())
 
@@ -132,7 +130,7 @@ async def test_build_graph_finalize_creates_synthesized_prompt_for_llm() -> None
         finalize_response="done",
     )
 
-    graph = build_graph(mock_llm, _make_simple_tool(response="TOOL_OUTPUT_12345"))
+    graph = build_graph(mock_llm, [_make_simple_tool(response="TOOL_OUTPUT_12345")])
 
     await graph.ainvoke(_make_state())
 
@@ -146,24 +144,41 @@ async def test_build_graph_finalize_creates_synthesized_prompt_for_llm() -> None
 
 @pytest.mark.asyncio
 async def test_build_graph_binds_tool_to_llm() -> None:
-    """build_graph calls bind_tools to equip the LLM with the fabric tool."""
+    """build_graph calls bind_tools to equip the LLM with MCP tools."""
     mock_llm, _ = _make_chat_model()
-    fabric_tool = _make_simple_tool()
+    mcp_tool = _make_simple_tool()
 
-    build_graph(mock_llm, fabric_tool)
+    build_graph(mock_llm, [mcp_tool])
 
-    mock_llm.bind_tools.assert_called_once_with([fabric_tool])
+    mock_llm.bind_tools.assert_called_once_with([mcp_tool])
 
 
 @pytest.mark.asyncio
 async def test_build_graph_passes_auth_state_through_messages() -> None:
     """Auth state fields are preserved in the graph's final state."""
     mock_llm, _ = _make_chat_model(direct_response="ok")
-    graph = build_graph(mock_llm, _make_simple_tool())
+    graph = build_graph(mock_llm, [_make_simple_tool()])
 
-    state = _make_state(auth_mode="m365", user_id="m365-user-123", fabric_user_token="tok-abc")
+    state = _make_state(
+        auth_mode="m365", user_id="m365-user-123", mcp_user_tokens={"fabric": "tok-abc"}
+    )
     result = await graph.ainvoke(state)
 
     assert result["auth_mode"] == "m365"
     assert result["user_id"] == "m365-user-123"
-    assert result["fabric_user_token"] == "tok-abc"
+    assert result["mcp_user_tokens"] == {"fabric": "tok-abc"}
+
+
+@pytest.mark.asyncio
+async def test_build_graph_without_tools_uses_chat_model_directly() -> None:
+    """Graph supports chat-only mode when no MCP tools are configured."""
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock(return_value=AIMessage(content="Chat-only answer"))
+
+    graph = build_graph(mock_llm, [])
+
+    result = await graph.ainvoke(_make_state())
+
+    assert result["messages"][-1].content == "Chat-only answer"
+    mock_llm.ainvoke.assert_awaited_once()
+    mock_llm.bind_tools.assert_not_called()

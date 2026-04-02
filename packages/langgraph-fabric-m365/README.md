@@ -1,7 +1,7 @@
 # langgraph-fabric-m365
 
 M365 adapter for Teams and Copilot Chat via the M365 Agents SDK.
-Bridges the LangGraph agent to the Bot Framework messaging pipeline.
+Bridges the LangGraph agent to the Bot Framework messaging pipeline, with optional OAuth-backed MCP tool access.
 
 ## Modules
 
@@ -23,11 +23,13 @@ Expose port `8000` via a dev tunnel and update the Azure Bot messaging endpoint 
 
 ## OAuth flow
 
-The M365 adapter:
+When MCP-backed tools require OAuth, the M365 adapter:
 
 1. Sends an Adaptive Card sign-in prompt when the user is not authenticated.
 2. Disables the sign-in action after flow initiation to prevent duplicate prompts.
 3. Accepts OAuth magic codes pasted back into chat for token redemption.
+
+With no MCP servers configured, the adapter runs in chat-only mode and does not prompt for Bot Service sign-in.
 
 State helpers in `oauth.py` wrap TurnState access for SDK compatibility.
 

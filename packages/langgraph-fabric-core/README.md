@@ -9,9 +9,9 @@ This package has **no** dependency on FastAPI, aiohttp, or the M365 Agents SDK.
 | --- | --- |
 | `core/config.py` | Shared base settings (`CoreSettings`) via pydantic-settings |
 | `core/logging.py` | Structured logs with correlation context |
-| `fabric/auth.py` | Local and M365 token strategies for Fabric |
-| `fabric/mcp_client.py` | Strict JSON-RPC MCP client wrapper for Fabric Data Agent endpoints |
-| `fabric/tools.py` | LangChain tool wrappers over MCP |
+| `mcp/auth.py` | Local and M365 token strategies for MCP scopes |
+| `mcp/client.py` | Strict JSON-RPC MCP client wrapper for configured MCP servers |
+| `mcp/tools.py` | LangChain tool wrappers over MCP |
 | `graph/workflow.py` | LangGraph state graph definition and tool routing |
 | `graph/orchestrator.py` | Shared run and stream orchestration |
 | `llm/factory.py` | Azure OpenAI / Foundry chat model factory |

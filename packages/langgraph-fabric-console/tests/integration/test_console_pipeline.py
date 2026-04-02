@@ -17,13 +17,19 @@ def _create_fake_settings(microsoft_tenant_id: str = "test-tenant") -> MagicMock
     """Create a mock CoreSettings object for testing."""
     settings = MagicMock()
     settings.microsoft_tenant_id = microsoft_tenant_id
+    settings.mcp_servers = [
+        MagicMock(name="fabric", scope="https://api.fabric.microsoft.com/.default")
+    ]
     return settings
 
 
 def _create_fake_token_provider(user_id: str = "test-user@example.com") -> MagicMock:
-    """Create a mock FabricTokenProvider object for testing."""
+    """Create a mock TokenProvider object for testing."""
     token_provider = MagicMock()
-    token_provider.get_authenticated_user_id.return_value = user_id
+    token_provider.get_authenticated_identity.return_value = SimpleNamespace(
+        user_id=user_id,
+        tenant_id="11111111-1111-1111-1111-111111111111",
+    )
     return token_provider
 
 
@@ -134,3 +140,21 @@ async def test_console_exits_immediately_on_first_empty_input() -> None:
             await run_console(orchestrator, settings, token_provider)
 
     assert orchestrator.calls == []
+
+
+@pytest.mark.asyncio
+async def test_console_chat_only_mode_runs_without_identity_lookup() -> None:
+    """Console integration: no MCP servers still allows direct chatbot interaction."""
+    inputs = iter(["Just chat", ""])
+    orchestrator = _CapturingOrchestrator(["Plain chat response"])
+    settings = _create_fake_settings()
+    settings.mcp_servers = []
+    token_provider = _create_fake_token_provider()
+
+    with patch("rich.console.Console.input", side_effect=inputs):
+        with patch("builtins.print"):
+            await run_console(orchestrator, settings, token_provider)
+
+    token_provider.get_authenticated_identity.assert_not_called()
+    assert orchestrator.calls[0]["user_id"] == "local-user"
+    assert orchestrator.calls[0]["prompt"] == "Just chat"

@@ -1,4 +1,4 @@
-"""LangGraph definition for the Fabric-enabled agent."""
+"""LangGraph definition for the MCP-enabled agent."""
 
 from typing import TypedDict
 
@@ -13,12 +13,12 @@ class AgentState(TypedDict):
     messages: list[BaseMessage]
     auth_mode: str
     user_id: str
-    fabric_user_token: str | None
+    mcp_user_tokens: dict[str, str]
 
 
-def build_graph(chat_model, fabric_tool):
+def build_graph(chat_model, tools):
     """Create a tool-enabled ReAct-like graph."""
-    tool_calling_llm = chat_model.bind_tools([fabric_tool])
+    tool_calling_llm = chat_model.bind_tools(tools) if tools else chat_model
 
     async def assistant(state: AgentState):
         response = await tool_calling_llm.ainvoke(state["messages"])
@@ -36,11 +36,11 @@ def build_graph(chat_model, fabric_tool):
 
         synthesized_prompt = (
             "You are a helpful analytics assistant. "
-            "Use the Fabric Data Agent result below to answer the user's request. "
+            "Use the MCP tool result below to answer the user's request. "
             "Do not mention internal tool calls. If the result is empty or indicates an error, "
             "explain that clearly and suggest a next step.\n\n"
             f"User request:\n{user_prompt}\n\n"
-            f"Fabric Data Agent result:\n{'\n\n'.join(tool_outputs).strip()}"
+            f"MCP tool result:\n{'\n\n'.join(tool_outputs).strip()}"
         )
 
         response = await chat_model.ainvoke([HumanMessage(content=synthesized_prompt)])
@@ -48,9 +48,14 @@ def build_graph(chat_model, fabric_tool):
 
     workflow = StateGraph(AgentState)
     workflow.add_node("assistant", assistant)
-    workflow.add_node("tools", ToolNode([fabric_tool]))
-    workflow.add_node("finalize", finalize)
     workflow.set_entry_point("assistant")
+
+    if not tools:
+        workflow.add_edge("assistant", END)
+        return workflow.compile()
+
+    workflow.add_node("tools", ToolNode(tools))
+    workflow.add_node("finalize", finalize)
     workflow.add_conditional_edges("assistant", tools_condition, {"tools": "tools", "__end__": END})
     workflow.add_edge("tools", "finalize")
     workflow.add_edge("finalize", END)

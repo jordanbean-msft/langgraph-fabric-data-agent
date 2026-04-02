@@ -182,6 +182,7 @@ async def get_m365_user_token(
     context: Any,
     state: TurnState,
     settings: M365Settings,
+    connection_name: str,
     user_id: str,
     channel_id: str | None,
     magic_code: str | None = None,
@@ -194,7 +195,7 @@ async def get_m365_user_token(
     try:
         token_result = await user_token_client.user_token.get_token(
             user_id=user_id,
-            connection_name=settings.fabric_oauth_connection_name,
+            connection_name=connection_name,
             channel_id=channel_id,
             code=magic_code,
         )
@@ -214,7 +215,7 @@ async def get_m365_user_token(
                 extra={
                     "channel_id": channel_id,
                     "user_id": user_id,
-                    "connection_name": settings.fabric_oauth_connection_name,
+                    "connection_name": connection_name,
                 },
             )
         else:
@@ -242,7 +243,7 @@ async def get_m365_user_token(
             return None
 
         token_state = TokenExchangeState(
-            connection_name=settings.fabric_oauth_connection_name,
+            connection_name=connection_name,
             conversation=conversation_ref,
             relates_to=getattr(context.activity, "relates_to", None),
             agent_url=getattr(context.activity, "service_url", None),
@@ -260,7 +261,7 @@ async def get_m365_user_token(
 
         token_or_sign_in = await get_token_or_sign_in(
             user_id,
-            settings.fabric_oauth_connection_name,
+            connection_name,
             channel_id,
             encoded_state,
         )
@@ -275,7 +276,7 @@ async def get_m365_user_token(
                 context,
                 state,
                 sign_in_link,
-                "To access Fabric Data Agent, sign in with your organizational account.",
+                f"To access MCP server '{connection_name}', sign in with your organizational account.",
             )
 
     except (AttributeError, ClientResponseError, RuntimeError, TypeError, ValueError):

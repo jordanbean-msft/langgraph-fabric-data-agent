@@ -12,7 +12,7 @@ Each interface package depends only on core.
 
 ```
 packages/
-  langgraph-fabric-core/     # Interface-agnostic: graph, orchestrator, Fabric MCP client, auth, LLM factory
+  langgraph-fabric-core/     # Interface-agnostic: graph, orchestrator, MCP clients, auth, LLM factory
   langgraph-fabric-api/      # FastAPI streaming interface (depends on core)
   langgraph-fabric-console/  # Interactive terminal interface (depends on core)
   langgraph-fabric-m365/     # M365 Agents SDK / Teams / Copilot Chat (depends on core)
@@ -28,9 +28,9 @@ The interface-agnostic package that all client packages depend on.
 | --- | --- |
 | [`core/config.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/core/config.py) | Shared base settings via pydantic-settings (`CoreSettings`) |
 | [`core/logging.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/core/logging.py) | Structured logs with correlation context |
-| [`fabric/auth.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/auth.py) | Local and M365 token strategies for Fabric |
-| [`fabric/mcp_client.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/mcp_client.py) | Strict JSON-RPC MCP client wrapper |
-| [`fabric/tools.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/fabric/tools.py) | LangChain tool wrappers over MCP |
+| [`mcp/auth.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/mcp/auth.py) | Local and M365 token strategies for MCP scopes |
+| [`mcp/client.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/mcp/client.py) | Strict JSON-RPC MCP client wrapper |
+| [`mcp/tools.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/mcp/tools.py) | LangChain tool wrappers over MCP |
 | [`graph/workflow.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/graph/workflow.py) | LangGraph state graph definition and tool routing |
 | [`graph/orchestrator.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/graph/orchestrator.py) | Shared run and stream orchestration |
 | [`llm/factory.py`](../packages/langgraph-fabric-core/src/langgraph_fabric_core/llm/factory.py) | Azure OpenAI / Foundry chat model factory |

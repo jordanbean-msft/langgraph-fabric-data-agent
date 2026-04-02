@@ -1,7 +1,7 @@
 # langgraph-fabric-console
 
-Interactive terminal interface for the LangGraph Fabric Data Agent sample.
-Streams agent responses directly to the terminal.
+Interactive terminal interface for the LangGraph MCP sample.
+Streams agent responses directly to the terminal, with or without MCP servers configured.
 
 ## Modules
 

@@ -6,13 +6,13 @@ ms.date: 2026-04-01
 
 ## Overview
 
-This repository demonstrates a LangGraph-based AI agent that calls a Fabric Data Agent via MCP.
+This repository demonstrates a LangGraph-based AI agent that can call MCP servers or run in chat-only mode.
 
 The sample is organized as a **uv workspace** with four independent Python packages:
 
 | Package | Description |
 | --- | --- |
-| [`langgraph-fabric-core`](packages/langgraph-fabric-core/) | Interface-agnostic: graph, orchestrator, Fabric MCP client, auth, LLM factory |
+| [`langgraph-fabric-core`](packages/langgraph-fabric-core/) | Interface-agnostic: graph, orchestrator, MCP client integration, auth, LLM factory |
 | [`langgraph-fabric-api`](packages/langgraph-fabric-api/) | FastAPI streaming endpoint |
 | [`langgraph-fabric-console`](packages/langgraph-fabric-console/) | Interactive terminal with streamed responses |
 | [`langgraph-fabric-m365`](packages/langgraph-fabric-m365/) | Teams / Copilot Chat via M365 Agents SDK |
@@ -29,8 +29,8 @@ Base prerequisites:
 - `uv`
 - Azure CLI 2.55.0 or later
 - Access to an Azure OpenAI / Foundry project with a `gpt-5.4` deployment
-- Access to a Fabric Data Agent MCP endpoint
-- A signed-in user account that can authenticate to Azure and Fabric
+- Optional access to one or more MCP server endpoints
+- A signed-in user account that can authenticate to Azure and any configured MCP backend when tool calls are enabled
 
 M365 adapter prerequisites (Teams / Copilot Chat only):
 
@@ -64,8 +64,9 @@ cp packages/langgraph-fabric-api/.env.example packages/langgraph-fabric-api/.env
 cp packages/langgraph-fabric-m365/.env.example packages/langgraph-fabric-m365/.env
 ```
 
-3. Fill the Azure OpenAI and Fabric MCP values in the copied file.
-4. For the M365 adapter, also set `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_TENANT_ID`, `FABRIC_OAUTH_CONNECTION_NAME`, and the `CONNECTIONS__SERVICE_CONNECTION__*` values from the [app registration reference](docs/app-registration.md).
+3. Fill the Azure OpenAI values in the copied file.
+4. Set `MCP_SERVERS` only if you want MCP-backed tools. Leave it unset or set it to `[]` for chat-only mode.
+5. For the M365 adapter, also set `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_TENANT_ID`, and the `CONNECTIONS__SERVICE_CONNECTION__*` values from the [app registration reference](docs/app-registration.md). In `MCP_SERVERS`, set `oauth_connection_name` for each server that needs Bot Service OAuth.
 
 ## Run
 
@@ -108,9 +109,10 @@ uv run pytest
 
 ## Notes
 
-- The `/chat/stream` endpoint requires `Authorization: Bearer <token>` — see [docs/api-guide.md](docs/api-guide.md).
-- Fabric tool calls always require user authentication.
-- Local mode uses `DefaultAzureCredential` with interactive fallback.
-- M365 mode expects Bot Service user tokens from Teams/Copilot Chat.
+- API and M365 channels still require authenticated users even in chat-only mode.
+- With `MCP_SERVERS=[]`, the sample runs in chat-only mode without MCP tool calls.
+- The `/chat/stream` endpoint always requires `Authorization: Bearer <token>`. See [docs/api-guide.md](docs/api-guide.md).
+- Local mode uses `DefaultAzureCredential` with interactive fallback when MCP-backed calls are enabled.
+- M365 chat-only access is protected by the Teams/Copilot JWT validated at `/api/messages`. Bot Service OAuth is only needed for MCP servers that declare `oauth_connection_name`.
 - M365 OAuth behavior sends an Adaptive Card sign-in prompt, disables the sign-in action after flow initiation, and supports pasting OAuth magic codes back in chat.
 - Logging supports a base `LOG_LEVEL` plus optional `LOG_LEVEL_OVERRIDE` values such as `langgraph_fabric_core.graph:DEBUG,azure.core:WARNING`.

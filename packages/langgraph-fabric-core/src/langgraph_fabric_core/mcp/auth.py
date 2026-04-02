@@ -1,4 +1,4 @@
-"""Authentication helpers for Fabric token acquisition."""
+"""Authentication helpers for MCP token acquisition."""
 
 import base64
 import json
@@ -18,6 +18,7 @@ class AuthContext:
 
     mode: str
     user_id: str
+    scope: str = ""
     user_token: str | None = None
 
 
@@ -29,8 +30,8 @@ class AuthenticatedIdentity:
     tenant_id: str
 
 
-class FabricTokenProvider:
-    """Resolve Fabric tokens for local and m365/api scenarios."""
+class TokenProvider:
+    """Resolve tokens for local and m365/api scenarios."""
 
     def __init__(
         self,
@@ -55,28 +56,28 @@ class FabricTokenProvider:
         )
 
     async def get_token(self, context: AuthContext) -> str:
-        """Return an access token for Fabric API."""
+        """Return an access token for the configured MCP scope."""
         if context.mode != "local":
             if not context.user_token:
-                raise ValueError(
-                    f"Auth mode '{context.mode}' requires a pre-provided Fabric user token"
-                )
+                raise ValueError(f"Auth mode '{context.mode}' requires a pre-provided user token")
             return context.user_token
 
-        return self._get_local_access_token()
+        return self._get_local_access_token(context.scope)
 
-    def _get_local_access_token(self) -> str:
+    def _get_local_access_token(self, scope: str) -> str:
         """Acquire a local token using the configured credential fallback chain."""
         configured_tenant = self._settings.microsoft_tenant_id.strip()
+        if not scope:
+            raise ValueError("A non-empty scope is required for local MCP authentication")
 
         try:
-            token = self._default_credential.get_token(self._settings.fabric_data_agent_scope)
+            token = self._default_credential.get_token(scope)
             if self._token_matches_configured_tenant(token.token, configured_tenant):
                 return token.token
         except (ClientAuthenticationError, CredentialUnavailableError):
             pass
 
-        token = self._get_device_code_token_with_fallback()
+        token = self._get_device_code_token_with_fallback(scope)
         if self._token_matches_configured_tenant(token.token, configured_tenant):
             return token.token
 
@@ -93,15 +94,13 @@ class FabricTokenProvider:
         claims = self._decode_token_claims(token)
         return claims.get("tid") == configured_tenant
 
-    def _get_device_code_token_with_fallback(self):
+    def _get_device_code_token_with_fallback(self, scope: str):
         """Acquire a device-code token and retry with Azure CLI app ID for invalid client IDs."""
         try:
-            return self._device_code_credential.get_token(self._settings.fabric_data_agent_scope)
+            return self._device_code_credential.get_token(scope)
         except ClientAuthenticationError as exc:
             if self._should_retry_with_azure_cli_public_client(exc):
-                return self._device_code_fallback_credential.get_token(
-                    self._settings.fabric_data_agent_scope
-                )
+                return self._device_code_fallback_credential.get_token(scope)
             raise
 
     def _should_retry_with_azure_cli_public_client(self, exc: ClientAuthenticationError) -> bool:
@@ -137,9 +136,9 @@ class FabricTokenProvider:
             return {}
         return {str(key): str(value) for key, value in claims.items()}
 
-    def get_authenticated_identity(self) -> AuthenticatedIdentity:
+    def get_authenticated_identity(self, scope: str) -> AuthenticatedIdentity:
         """Extract authenticated local identity from token claims."""
-        claims = self._decode_token_claims(self._get_local_access_token())
+        claims = self._decode_token_claims(self._get_local_access_token(scope))
         user_id = (
             claims.get("preferred_username")
             or claims.get("upn")
@@ -151,6 +150,6 @@ class FabricTokenProvider:
         tenant_id = claims.get("tid") or "unknown"
         return AuthenticatedIdentity(user_id=user_id, tenant_id=tenant_id)
 
-    def get_authenticated_user_id(self) -> str:
+    def get_authenticated_user_id(self, scope: str) -> str:
         """Extract the authenticated user ID (UPN) from the credential token."""
-        return self.get_authenticated_identity().user_id
+        return self.get_authenticated_identity(scope).user_id

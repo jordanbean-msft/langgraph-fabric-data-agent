@@ -1,4 +1,4 @@
-"""Strict MCP protocol client for Fabric Data Agent."""
+"""Strict MCP protocol client."""
 
 import json
 import logging
@@ -6,19 +6,24 @@ from typing import Any
 
 import httpx
 
-from langgraph_fabric_core.core.config import CoreSettings
-from langgraph_fabric_core.fabric.auth import AuthContext, FabricTokenProvider
+from langgraph_fabric_core.core.config import McpServerConfig
+from langgraph_fabric_core.mcp.auth import AuthContext, TokenProvider
 
 logger = logging.getLogger(__name__)
 
 
-class FabricMcpClient:
+class McpClient:
     """JSON-RPC MCP client over streamable HTTP."""
 
-    def __init__(self, settings: CoreSettings, token_provider: FabricTokenProvider):
-        self._settings = settings
+    def __init__(self, server_config: McpServerConfig, token_provider: TokenProvider):
+        self._server_config = server_config
         self._token_provider = token_provider
         self._request_id = 0
+
+    @property
+    def server_config(self) -> McpServerConfig:
+        """Return immutable MCP server configuration for this client."""
+        return self._server_config
 
     @staticmethod
     def _try_parse_jsonrpc_sse_event(event_data: str) -> dict[str, Any] | None:
@@ -104,12 +109,10 @@ class FabricMcpClient:
         }
 
         logger.info("MCP request method=%s id=%s", method, request_id)
-        async with httpx.AsyncClient(
-            timeout=self._settings.fabric_data_agent_timeout_seconds
-        ) as client:
+        async with httpx.AsyncClient(timeout=self._server_config.timeout_seconds) as client:
             async with client.stream(
                 "POST",
-                self._settings.fabric_data_agent_mcp_url,
+                self._server_config.url,
                 headers=headers,
                 json=payload,
             ) as response:
@@ -133,7 +136,7 @@ class FabricMcpClient:
         )
 
     async def list_tools(self, auth_context: AuthContext) -> list[dict[str, Any]]:
-        """Return MCP tools exposed by Fabric Data Agent."""
+        """Return MCP tools exposed by the configured server."""
         result = await self._rpc("tools/list", {}, auth_context)
         return result.get("tools", [])
 

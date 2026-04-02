@@ -48,6 +48,7 @@ async def test_stream_does_not_emit_raw_tool_output_on_tool_end() -> None:
 
     orchestrator = AgentOrchestrator.__new__(AgentOrchestrator)
     orchestrator.__dict__["_graph"] = FakeGraph()
+    orchestrator.__dict__["_tool_descriptions"] = {"mcp_tool": "Fabric Data Agent"}
 
     chunks: list[str] = []
     async for chunk in orchestrator.stream(
@@ -128,7 +129,7 @@ async def test_run_prepends_history_messages_to_state() -> None:
 
 @pytest.mark.asyncio
 async def test_run_passes_auth_fields_to_graph_state() -> None:
-    """run() passes auth_mode, user_id, and fabric_user_token into graph state."""
+    """run() passes auth_mode, user_id, and mcp_user_tokens into graph state."""
     captured: dict = {}
 
     class FakeGraph:
@@ -144,13 +145,13 @@ async def test_run_passes_auth_fields_to_graph_state() -> None:
         channel="m365",
         auth_mode="m365",
         user_id="m365-user",
-        fabric_user_token="tok-abc",
+        mcp_user_tokens={"fabric": "tok-abc"},
     )
 
     state = captured["state"]
     assert state["auth_mode"] == "m365"
     assert state["user_id"] == "m365-user"
-    assert state["fabric_user_token"] == "tok-abc"
+    assert state["mcp_user_tokens"] == {"fabric": "tok-abc"}
 
 
 @pytest.mark.asyncio

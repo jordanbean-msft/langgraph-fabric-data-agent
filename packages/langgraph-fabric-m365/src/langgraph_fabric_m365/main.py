@@ -5,10 +5,10 @@ import logging
 
 from aiohttp.web import AppKey, Application, Request, Response, run_app
 from langgraph_fabric_core.core.logging import configure_logging
-from langgraph_fabric_core.fabric.auth import FabricTokenProvider
-from langgraph_fabric_core.fabric.mcp_client import FabricMcpClient
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from langgraph_fabric_core.llm.factory import create_chat_model
+from langgraph_fabric_core.mcp.auth import TokenProvider
+from langgraph_fabric_core.mcp.client import McpClient
 from microsoft_agents.hosting.aiohttp import jwt_authorization_middleware, start_agent_process
 from microsoft_agents.hosting.core import AgentApplication, TurnState
 from microsoft_agents.hosting.core.authorization import AgentAuthConfiguration
@@ -28,10 +28,10 @@ ADAPTER_STATE_KEY = "adapter"
 
 async def _build_m365_agent_app() -> AgentApplication[TurnState]:
     settings = get_settings()
-    token_provider = FabricTokenProvider(settings)
-    client = FabricMcpClient(settings, token_provider)
+    token_provider = TokenProvider(settings)
+    clients = [McpClient(server, token_provider) for server in settings.mcp_servers]
     model = create_chat_model(settings)
-    orchestrator = AgentOrchestrator(model, client)
+    orchestrator = AgentOrchestrator(model, clients)
     return await create_m365_app(settings, orchestrator)
 
 

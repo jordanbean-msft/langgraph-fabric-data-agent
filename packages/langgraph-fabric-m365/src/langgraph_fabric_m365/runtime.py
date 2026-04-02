@@ -23,7 +23,6 @@ def build_m365_environment(settings: M365Settings) -> dict[str, str]:
             "MICROSOFT_APP_ID": settings.microsoft_app_id,
             "MICROSOFT_APP_PASSWORD": settings.microsoft_app_password,
             "MICROSOFT_TENANT_ID": settings.microsoft_tenant_id,
-            "FABRIC_OAUTH_CONNECTION_NAME": settings.fabric_oauth_connection_name,
             "CONNECTIONS__SERVICE_CONNECTION__ID": settings.connections_service_connection_id,
             "CONNECTIONS__SERVICE_CONNECTION__NAME": settings.connections_service_connection_name,
             "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID": settings.connections_service_connection_client_id,

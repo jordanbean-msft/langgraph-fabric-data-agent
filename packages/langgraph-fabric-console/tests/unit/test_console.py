@@ -4,18 +4,21 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from langgraph_fabric_console.console import run_console
-from langgraph_fabric_core.fabric.auth import AuthenticatedIdentity
+from langgraph_fabric_core.mcp.auth import AuthenticatedIdentity
 
 
 def _create_fake_settings(microsoft_tenant_id: str = "test-tenant") -> MagicMock:
     """Create a mock CoreSettings object for testing."""
     settings = MagicMock()
     settings.microsoft_tenant_id = microsoft_tenant_id
+    settings.mcp_servers = [
+        MagicMock(name="fabric", scope="https://api.fabric.microsoft.com/.default")
+    ]
     return settings
 
 
 def _create_fake_token_provider(user_id: str = "test-user@example.com") -> MagicMock:
-    """Create a mock FabricTokenProvider object for testing."""
+    """Create a mock TokenProvider object for testing."""
     token_provider = MagicMock()
     token_provider.get_authenticated_identity.return_value = AuthenticatedIdentity(
         user_id=user_id,
@@ -89,6 +92,7 @@ async def test_run_console_streams_response_and_updates_history() -> None:
     assert orchestrator.stream_calls[0]["channel"] == "console"
     assert orchestrator.stream_calls[0]["auth_mode"] == "local"
     assert orchestrator.stream_calls[0]["user_id"] == "test-user@example.com"
+    assert orchestrator.stream_calls[0]["mcp_user_tokens"] == {}
     assert len(orchestrator.stream_calls[0]["history_snapshot"]) == 0
     assert len(orchestrator.stream_calls[1]["history_snapshot"]) == 2
 
@@ -158,3 +162,28 @@ async def test_run_console_falls_back_to_settings_tenant_when_token_tenant_unkno
 
     printed_welcome = str(fake_console.print_calls[0][0][0].renderable)
     assert "settings-tenant" in printed_welcome
+
+
+@pytest.mark.asyncio
+async def test_run_console_supports_chat_only_mode_without_mcp_servers() -> None:
+    class FakeOrchestrator:
+        def __init__(self) -> None:
+            self.stream_calls: list[dict[str, Any]] = []
+
+        async def stream(self, **kwargs):
+            self.stream_calls.append(kwargs)
+            yield "Hello from chat-only mode"
+
+    orchestrator = FakeOrchestrator()
+    settings = _create_fake_settings()
+    settings.mcp_servers = []
+    token_provider = _create_fake_token_provider()
+    fake_console = FakeConsole(iter(["hello", ""]))
+
+    with patch("langgraph_fabric_console.console.console", fake_console):
+        await run_console(orchestrator, settings, token_provider)
+
+    token_provider.get_authenticated_identity.assert_not_called()
+    assert orchestrator.stream_calls[0]["user_id"] == "local-user"
+    printed_welcome = str(fake_console.print_calls[0][0][0].renderable)
+    assert "chat-only" in printed_welcome

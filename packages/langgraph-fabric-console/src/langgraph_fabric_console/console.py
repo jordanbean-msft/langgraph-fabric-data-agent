@@ -2,8 +2,8 @@
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph_fabric_core.core.config import CoreSettings
-from langgraph_fabric_core.fabric.auth import FabricTokenProvider
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
+from langgraph_fabric_core.mcp.auth import TokenProvider
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -14,23 +14,30 @@ console = Console()
 async def run_console(
     orchestrator: AgentOrchestrator,
     settings: CoreSettings,
-    token_provider: FabricTokenProvider,
+    token_provider: TokenProvider,
 ) -> None:
     """Run interactive terminal chat with streamed responses."""
-    identity = token_provider.get_authenticated_identity()
-    user_id = identity.user_id
+    if settings.mcp_servers:
+        identity = token_provider.get_authenticated_identity(settings.mcp_servers[0].scope)
+        user_id = identity.user_id
+        tenant_info = identity.tenant_id
+        if tenant_info == "unknown":
+            tenant_info = (
+                settings.microsoft_tenant_id if settings.microsoft_tenant_id else "default"
+            )
+        connection_info = Text(
+            f"Tenant: {tenant_info}\nUser ID: {user_id}",
+            style="dim cyan",
+        )
+    else:
+        user_id = "local-user"
+        connection_info = Text(
+            "Mode: chat-only\nMCP servers: none configured",
+            style="dim cyan",
+        )
 
     # Welcome message
-    welcome_text = Text("LangGraph Fabric MCP Console", style="bold cyan")
-
-    # Build connection info
-    tenant_info = identity.tenant_id
-    if tenant_info == "unknown":
-        tenant_info = settings.microsoft_tenant_id if settings.microsoft_tenant_id else "default"
-    connection_info = Text(
-        f"Tenant: {tenant_info}\nUser ID: {user_id}",
-        style="dim cyan",
-    )
+    welcome_text = Text("LangGraph MCP Console", style="bold cyan")
 
     # Combine welcome and connection info
     welcome_panel_text = Text()
@@ -69,6 +76,7 @@ async def run_console(
                 channel="console",
                 auth_mode="local",
                 user_id=user_id,
+                mcp_user_tokens={},
                 history=history,
             ):
                 # Check if this is a tool call message

@@ -1,4 +1,4 @@
-"""LangChain tools that proxy calls to Fabric MCP."""
+"""LangChain tools that proxy calls to MCP servers."""
 
 import logging
 from typing import Annotated
@@ -7,8 +7,8 @@ import httpx
 from langchain_core.tools import StructuredTool
 from langgraph.prebuilt import InjectedState
 
-from langgraph_fabric_core.fabric.auth import AuthContext
-from langgraph_fabric_core.fabric.mcp_client import FabricMcpClient
+from langgraph_fabric_core.mcp.auth import AuthContext
+from langgraph_fabric_core.mcp.client import McpClient
 
 logger = logging.getLogger(__name__)
 
@@ -41,18 +41,26 @@ def _resolve_query_argument_name(tool_definition: dict) -> str:
     return "query"
 
 
-def build_fabric_tool(client: FabricMcpClient):
-    """Build a LangChain tool for Fabric querying via MCP."""
+def build_mcp_tool(client: McpClient):
+    """Build a LangChain tool for querying a specific MCP server."""
 
-    async def fabric_data_agent_query(
+    server = client.server_config
+    tool_name = f"mcp_{server.name}"
+
+    async def mcp_query(
         query: str,
         state: Annotated[dict, InjectedState],
     ) -> str:
-        """Query the Fabric Data Agent MCP tool using natural language."""
+        """Query this MCP server using natural language."""
+        tokens = state.get("mcp_user_tokens") or {}
+        if not isinstance(tokens, dict):
+            tokens = {}
+
         auth_context = AuthContext(
             mode=state["auth_mode"],
             user_id=state["user_id"],
-            user_token=state.get("fabric_user_token"),
+            scope=server.scope,
+            user_token=tokens.get(server.name),
         )
 
         try:
@@ -66,12 +74,18 @@ def build_fabric_tool(client: FabricMcpClient):
                 arguments={query_argument_name: query},
                 auth_context=auth_context,
             )
+        except ValueError as exc:
+            logger.warning("MCP server %s authentication unavailable: %s", server.name, exc)
+            return (
+                f"Authentication required for MCP server '{server.name}'. "
+                "Sign in to the corresponding connection and retry."
+            )
         except (httpx.HTTPError, RuntimeError) as exc:
-            logger.exception("Fabric Data Agent query failed")
-            return f"Fabric Data Agent query failed: {exc}"
+            logger.exception("MCP server %s query failed", server.name)
+            return f"MCP server '{server.name}' query failed: {exc}"
 
     return StructuredTool.from_function(
-        coroutine=fabric_data_agent_query,
-        name="fabric_data_agent_query",
-        description="Query the Fabric Data Agent MCP tool using natural language",
+        coroutine=mcp_query,
+        name=tool_name,
+        description=server.description,
     )

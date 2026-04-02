@@ -69,20 +69,30 @@ async def create_m365_app(
         user_id = getattr(getattr(context.activity, "from_property", None), "id", "m365-user")
         channel_id = getattr(context.activity, "channel_id", None)
         magic_code = extract_magic_code(text)
+        servers_requiring_oauth = [
+            server for server in settings.mcp_servers if server.oauth_connection_name
+        ]
 
         if not magic_code and text.strip():
             state_set(state, PENDING_PROMPT_KEY, text)
 
-        fabric_user_token = await get_m365_user_token(
-            context=context,
-            state=state,
-            settings=settings,
-            user_id=user_id,
-            channel_id=channel_id,
-            magic_code=magic_code,
-        )
+        mcp_user_tokens: dict[str, str] = {}
+        for server in settings.mcp_servers:
+            if not server.oauth_connection_name:
+                continue
+            token = await get_m365_user_token(
+                context=context,
+                state=state,
+                settings=settings,
+                connection_name=server.oauth_connection_name,
+                user_id=user_id,
+                channel_id=channel_id,
+                magic_code=magic_code,
+            )
+            if token:
+                mcp_user_tokens[server.name] = token
 
-        if not fabric_user_token:
+        if servers_requiring_oauth and not mcp_user_tokens:
             if magic_code:
                 await context.send_activity(
                     "We could not redeem that verification code. Please open the sign-in card and try again.",
@@ -120,7 +130,7 @@ async def create_m365_app(
             channel="m365",
             auth_mode="m365",
             user_id=user_id,
-            fabric_user_token=fabric_user_token,
+            mcp_user_tokens=mcp_user_tokens,
             history=history,
         ):
             if chunk.startswith("\n[tool]"):

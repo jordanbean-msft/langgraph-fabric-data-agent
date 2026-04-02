@@ -12,14 +12,19 @@ class FakeOrchestrator:
         yield "chunk-2"
 
 
-async def _fake_obo(bearer_token: str, settings) -> str:
+async def _fake_obo(_bearer_token: str, _settings, scope: str) -> str:
+    assert scope == "https://api.fabric.microsoft.com/.default"
     return "fake-fabric-token"
+
+
+def _get_fake_orchestrator() -> FakeOrchestrator:
+    return FakeOrchestrator()
 
 
 def test_streaming_endpoint(monkeypatch, fake_settings):
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: FakeOrchestrator())
-    monkeypatch.setattr(api_module, "_get_fabric_token_obo", _fake_obo)
+    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
     client = TestClient(api_module.app)
     response = client.post(
         "/chat/stream",
@@ -34,15 +39,24 @@ def test_streaming_endpoint(monkeypatch, fake_settings):
 
 def test_streaming_endpoint_no_auth_returns_401(monkeypatch, fake_settings):
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: FakeOrchestrator())
-    monkeypatch.setattr(api_module, "_get_fabric_token_obo", _fake_obo)
+    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
+    client = TestClient(api_module.app, raise_server_exceptions=False)
+    response = client.post("/chat/stream", json={"prompt": "hello"})
+    assert response.status_code == 401
+
+
+def test_streaming_endpoint_chat_only_mode_still_requires_auth(monkeypatch, fake_settings):
+    fake_settings.mcp_servers = []
+    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
+    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
     client = TestClient(api_module.app, raise_server_exceptions=False)
     response = client.post("/chat/stream", json={"prompt": "hello"})
     assert response.status_code == 401
 
 
 def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_settings):
-    """Integration: the fabric token from OBO exchange reaches orchestrator.stream()."""
+    """Integration: scope-specific OBO tokens reach orchestrator.stream()."""
     captured: dict = {}
 
     class CapturingOrchestrator:
@@ -50,12 +64,16 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
             captured.update(kwargs)
             yield "response"
 
-    async def capturing_obo(bearer_token: str, settings) -> str:
+    async def capturing_obo(_bearer_token: str, _settings, scope: str) -> str:
+        assert scope == "https://api.fabric.microsoft.com/.default"
         return "obo-fabric-token"
 
+    def get_capturing_orchestrator() -> CapturingOrchestrator:
+        return CapturingOrchestrator()
+
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: CapturingOrchestrator())
-    monkeypatch.setattr(api_module, "_get_fabric_token_obo", capturing_obo)
+    monkeypatch.setattr(api_module, "get_orchestrator", get_capturing_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", capturing_obo)
     client = TestClient(api_module.app)
     client.post(
         "/chat/stream",
@@ -63,7 +81,7 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
         headers={"Authorization": "Bearer fake-caller-token"},
     )
 
-    assert captured.get("fabric_user_token") == "obo-fabric-token"
+    assert captured.get("mcp_user_tokens") == {"fabric": "obo-fabric-token"}
     assert captured.get("auth_mode") == "api"
     assert captured.get("channel") == "api"
 
@@ -71,8 +89,8 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
 def test_streaming_endpoint_returns_422_when_prompt_is_missing(monkeypatch, fake_settings):
     """Integration: ChatRequest rejects requests that omit the required `prompt` field."""
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: FakeOrchestrator())
-    monkeypatch.setattr(api_module, "_get_fabric_token_obo", _fake_obo)
+    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
     client = TestClient(api_module.app)
     response = client.post(
         "/chat/stream",
@@ -89,9 +107,12 @@ def test_streaming_endpoint_sse_format_includes_data_prefix(monkeypatch, fake_se
         async def stream(self, **_kwargs) -> AsyncIterator[str]:
             yield "test chunk"
 
+    def get_sse_orchestrator() -> SseOrchestrator:
+        return SseOrchestrator()
+
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: SseOrchestrator())
-    monkeypatch.setattr(api_module, "_get_fabric_token_obo", _fake_obo)
+    monkeypatch.setattr(api_module, "get_orchestrator", get_sse_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
     client = TestClient(api_module.app)
     response = client.post(
         "/chat/stream",
@@ -110,9 +131,12 @@ def test_streaming_endpoint_multiline_chunk_is_valid_sse(monkeypatch, fake_setti
         async def stream(self, **_kwargs) -> AsyncIterator[str]:
             yield "line-1\nline-2"
 
+    def get_multiline_orchestrator() -> MultilineOrchestrator:
+        return MultilineOrchestrator()
+
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: MultilineOrchestrator())
-    monkeypatch.setattr(api_module, "_get_fabric_token_obo", _fake_obo)
+    monkeypatch.setattr(api_module, "get_orchestrator", get_multiline_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
     client = TestClient(api_module.app)
     response = client.post(
         "/chat/stream",

@@ -4,8 +4,8 @@ import json
 import pytest
 import respx
 from httpx import Response
-from langgraph_fabric_core.fabric.auth import AuthContext
-from langgraph_fabric_core.fabric.mcp_client import FabricMcpClient
+from langgraph_fabric_core.mcp.auth import AuthContext
+from langgraph_fabric_core.mcp.client import McpClient
 
 
 class FakeTokenProvider:
@@ -25,10 +25,11 @@ def _sse_response(message: dict) -> Response:
 @pytest.mark.asyncio
 @respx.mock
 async def test_list_and_call_tool(settings_fixture):
-    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
-    auth = AuthContext(mode="local", user_id="u1")
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
 
-    route = respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+    route = respx.post(server.url).mock(
         side_effect=[
             _sse_response({"jsonrpc": "2.0", "id": 1, "result": {}}),
             _sse_response({"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "query"}]}}),
@@ -56,10 +57,11 @@ async def test_list_and_call_tool(settings_fixture):
 @pytest.mark.asyncio
 @respx.mock
 async def test_list_and_call_tool_with_sse(settings_fixture):
-    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
-    auth = AuthContext(mode="local", user_id="u1")
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
 
-    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+    respx.post(server.url).mock(
         side_effect=[
             _sse_response({"jsonrpc": "2.0", "id": 1, "result": {}}),
             _sse_response({"jsonrpc": "2.0", "id": 2, "result": {"tools": [{"name": "query"}]}}),
@@ -84,10 +86,11 @@ async def test_list_and_call_tool_with_sse(settings_fixture):
 @pytest.mark.asyncio
 @respx.mock
 async def test_json_response_is_supported(settings_fixture):
-    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
-    auth = AuthContext(mode="local", user_id="u1")
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
 
-    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+    respx.post(server.url).mock(
         return_value=Response(200, json={"jsonrpc": "2.0", "id": 1, "result": {}})
     )
 
@@ -97,10 +100,11 @@ async def test_json_response_is_supported(settings_fixture):
 @pytest.mark.asyncio
 @respx.mock
 async def test_unsupported_content_type_raises(settings_fixture):
-    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
-    auth = AuthContext(mode="local", user_id="u1")
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
 
-    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+    respx.post(server.url).mock(
         return_value=Response(
             200,
             headers={"content-type": "text/plain"},
@@ -115,10 +119,11 @@ async def test_unsupported_content_type_raises(settings_fixture):
 @pytest.mark.asyncio
 @respx.mock
 async def test_json_response_id_mismatch_raises(settings_fixture):
-    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
-    auth = AuthContext(mode="local", user_id="u1")
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
 
-    respx.post(settings_fixture.fabric_data_agent_mcp_url).mock(
+    respx.post(server.url).mock(
         return_value=Response(200, json={"jsonrpc": "2.0", "id": 999, "result": {}})
     )
 
@@ -128,8 +133,9 @@ async def test_json_response_id_mismatch_raises(settings_fixture):
 
 @pytest.mark.asyncio
 async def test_concurrent_requests_keep_distinct_request_ids(settings_fixture, monkeypatch):
-    client = FabricMcpClient(settings_fixture, FakeTokenProvider())
-    auth = AuthContext(mode="local", user_id="u1")
+    server = settings_fixture.mcp_servers[0]
+    client = McpClient(server, FakeTokenProvider())
+    auth = AuthContext(mode="local", user_id="u1", scope=server.scope)
 
     captured_request_ids: list[int] = []
 
@@ -164,9 +170,7 @@ async def test_concurrent_requests_keep_distinct_request_ids(settings_fixture, m
         await asyncio.sleep(0)
         return {"jsonrpc": "2.0", "id": request_id, "result": {"tools": []}}
 
-    monkeypatch.setattr(
-        "langgraph_fabric_core.fabric.mcp_client.httpx.AsyncClient", _FakeAsyncClient
-    )
+    monkeypatch.setattr("langgraph_fabric_core.mcp.client.httpx.AsyncClient", _FakeAsyncClient)
     monkeypatch.setattr(
         client, "_read_streamable_http_response", _fake_read_streamable_http_response
     )

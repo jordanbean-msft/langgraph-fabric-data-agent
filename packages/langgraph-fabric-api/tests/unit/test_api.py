@@ -19,6 +19,16 @@ def test_chat_stream_missing_auth_header_returns_401():
     assert response.status_code == 401
 
 
+def test_chat_stream_still_requires_auth_header_in_chat_only_mode(monkeypatch, fake_settings):
+    fake_settings.mcp_servers = []
+    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
+
+    client = TestClient(api_module.app, raise_server_exceptions=False)
+    response = client.post("/chat/stream", json={"prompt": "hello"})
+
+    assert response.status_code == 401
+
+
 def test_extract_user_id_preferred_username():
     # JWT payload: {"preferred_username": "alice@example.com", "sub": "abc123"}
     token = "header.eyJwcmVmZXJyZWRfdXNlcm5hbWUiOiAiYWxpY2VAZXhhbXBsZS5jb20iLCAic3ViIjogImFiYzEyMyJ9.sig"
@@ -41,16 +51,20 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
 
     class FakeOrchestrator:
         async def stream(self, **_kwargs) -> AsyncIterator[str]:
-            yield "\n[tool] Querying Fabric Data Agent...\n"
+            yield "\n[tool] Querying mcp_fabric...\n"
             yield "chunk-1"
             yield "chunk-2"
 
-    async def fake_obo(bearer_token: str, settings) -> str:
+    def fake_get_orchestrator():
+        return FakeOrchestrator()
+
+    async def fake_obo(_bearer_token: str, _settings, scope: str) -> str:
+        assert scope == "https://api.fabric.microsoft.com/.default"
         return "fake-fabric-token"
 
     monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", lambda: FakeOrchestrator())
-    monkeypatch.setattr(api_module, "_get_fabric_token_obo", fake_obo)
+    monkeypatch.setattr(api_module, "get_orchestrator", fake_get_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", fake_obo)
 
     client = TestClient(api_module.app)
     response = client.post(
@@ -60,7 +74,7 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
     )
     assert response.status_code == 200
     assert "event: tool_status" in response.text
-    assert "[tool] Querying Fabric Data Agent..." in response.text
+    assert "[tool] Querying mcp_fabric..." in response.text
     assert "event: text" in response.text
     assert "chunk-1" in response.text
     assert "chunk-2" in response.text

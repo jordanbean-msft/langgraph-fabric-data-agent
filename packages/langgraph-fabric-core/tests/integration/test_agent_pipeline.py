@@ -20,7 +20,7 @@ def _make_tool_calling_llm(finalize_response: str = "Final synthesized answer") 
             content="",
             tool_calls=[
                 {
-                    "name": "fabric_data_agent_query",
+                    "name": "mcp_fabric",
                     "args": {"query": "top 5 customers"},
                     "id": "call-int-1",
                     "type": "tool_call",
@@ -56,8 +56,13 @@ async def test_orchestrator_run_direct_response_pipeline() -> None:
     """Core integration: orchestrator → graph → direct LLM answer (no tool call)."""
     chat_model = _make_direct_llm("Paris is the capital of France")
     fabric_client = AsyncMock()
+    fabric_client.server_config = SimpleNamespace(
+        name="fabric",
+        description="Fabric MCP",
+        scope="https://api.fabric.microsoft.com/.default",
+    )
 
-    orchestrator = AgentOrchestrator(chat_model, fabric_client)
+    orchestrator = AgentOrchestrator(chat_model, [fabric_client])
 
     result = await orchestrator.run(
         prompt="What is the capital of France?",
@@ -87,8 +92,13 @@ async def test_orchestrator_run_tool_call_pipeline() -> None:
         }
     ]
     fabric_client.call_tool.return_value = "Customer A, B, C"
+    fabric_client.server_config = SimpleNamespace(
+        name="fabric",
+        description="Fabric MCP",
+        scope="https://api.fabric.microsoft.com/.default",
+    )
 
-    orchestrator = AgentOrchestrator(chat_model, fabric_client)
+    orchestrator = AgentOrchestrator(chat_model, [fabric_client])
 
     result = await orchestrator.run(
         prompt="top 5 customers",
@@ -111,8 +121,13 @@ async def test_orchestrator_run_passes_history_to_graph() -> None:
     """Core integration: prior conversation history is included in the graph state."""
     chat_model = _make_direct_llm("Response to new question")
     fabric_client = AsyncMock()
+    fabric_client.server_config = SimpleNamespace(
+        name="fabric",
+        description="Fabric MCP",
+        scope="https://api.fabric.microsoft.com/.default",
+    )
 
-    orchestrator = AgentOrchestrator(chat_model, fabric_client)
+    orchestrator = AgentOrchestrator(chat_model, [fabric_client])
 
     history = [
         HumanMessage(content="Who are the top customers?"),
@@ -143,8 +158,13 @@ async def test_orchestrator_run_mcp_error_is_reported_in_final_answer() -> None:
     fabric_client = AsyncMock()
     fabric_client.list_tools.return_value = [{"name": "query"}]
     fabric_client.call_tool.side_effect = RuntimeError("upstream error")
+    fabric_client.server_config = SimpleNamespace(
+        name="fabric",
+        description="Fabric MCP",
+        scope="https://api.fabric.microsoft.com/.default",
+    )
 
-    orchestrator = AgentOrchestrator(chat_model, fabric_client)
+    orchestrator = AgentOrchestrator(chat_model, [fabric_client])
 
     result = await orchestrator.run(
         prompt="anything",
@@ -202,7 +222,7 @@ async def test_orchestrator_stream_tool_call_emits_markers_and_final_answer() ->
     """Core integration: streaming with tool call emits [tool] markers and final text."""
 
     class FakeGraph:
-        async def astream_events(self, _state, version):
+        async def astream_events(self, _state, **_kwargs):
             yield {"event": "on_tool_start", "data": {}}
             yield {"event": "on_tool_end", "data": {"output": "raw tool output"}}
             yield {
@@ -212,6 +232,7 @@ async def test_orchestrator_stream_tool_call_emits_markers_and_final_answer() ->
 
     orchestrator = AgentOrchestrator.__new__(AgentOrchestrator)
     orchestrator.__dict__["_graph"] = FakeGraph()
+    orchestrator.__dict__["_tool_descriptions"] = {"mcp_tool": "Fabric Data Agent"}
 
     chunks = []
     async for chunk in orchestrator.stream(

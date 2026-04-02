@@ -1,35 +1,34 @@
 ---
-title: Repository Copilot Instructions
 description: Repository-wide guidance for implementing and validating this Python LangGraph monorepo sample
 ---
 
 ## Purpose
 
-This repository is a Python monorepo sample demonstrating a LangGraph-based AI agent calling a Fabric Data Agent via MCP. It is structured as a uv workspace with four packages that cleanly separate the core LangGraph implementation from each client interface. Keep implementation simple, explicit, and testable.
+This repository is a Python monorepo sample demonstrating a LangGraph-based AI agent calling one or more MCP servers (including Fabric Data Agent endpoints). It is structured as a uv workspace with four packages that cleanly separate the core LangGraph implementation from each client interface. Keep implementation simple, explicit, and testable.
 
 ## Monorepo package layout
 
 ```
 packages/
-  langgraph-fabric-core/     # Interface-agnostic: graph, orchestrator, Fabric MCP client, auth, LLM factory
+  langgraph-fabric-core/     # Interface-agnostic: graph, orchestrator, MCP client, auth, LLM factory
   langgraph-fabric-api/      # FastAPI streaming interface (depends on core)
   langgraph-fabric-console/  # Interactive terminal interface (depends on core)
   langgraph-fabric-m365/     # M365 Agents SDK / Teams / Copilot Chat (depends on core)
 ```
 
-The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents SDK.
+The core package has no dependency on FastAPI, aiohttp, or the M365 Agents SDK.
 
 ## Required engineering standards
 
 - Always use uv for environment and dependency management.
 - Keep Python imports at the top of files.
 - Do not use lazy imports or wrap imports in try/except blocks.
-- In `packages/*/src`, do not import private symbols (names starting with `_`) from other modules. If a helper is shared across modules, promote it to a public symbol.
+- In packages/*/src, do not import private symbols (names starting with `_`) from other modules. If a helper is shared across modules, promote it to a public symbol.
 - Targeted private imports are acceptable in tests when explicitly needed for unit-level coverage.
 - Prefer pydantic-settings for centralized configuration; each client package has its own settings class.
 - Use structured logging with correlation identifiers.
 - Keep FastAPI endpoints unauthenticated in this sample.
-- Require user authentication for Fabric calls.
+- Require user authentication for MCP tool calls.
 - Use streaming responses for console and API interaction.
 
 ## Build and validation commands
@@ -44,69 +43,66 @@ The core package has **no** dependency on FastAPI, aiohttp, or the M365 Agents S
 
 ## Architecture map
 
-### langgraph-fabric-core (`packages/langgraph-fabric-core/src/langgraph_fabric_core/`)
+### langgraph-fabric-core (packages/langgraph-fabric-core/src/langgraph_fabric_core/)
 
-- `core/config.py`: shared base settings (`CoreSettings`) — Azure OpenAI, Fabric MCP, logging, port
-- `core/logging.py`: logging setup and correlation helpers
-- `fabric/auth.py`: local and M365 token strategies for Fabric; includes `get_authenticated_user_id()` to extract user principal name from JWT tokens
-- `fabric/mcp_client.py`: strict MCP protocol wrapper for Fabric
-- `fabric/tools.py`: LangChain tool wrappers over Fabric MCP
-- `graph/workflow.py`: LangGraph state graph and routing
-- `graph/orchestrator.py`: shared run and stream orchestration
-- `llm/factory.py`: Azure OpenAI / Foundry chat model factory
+- core/config.py: shared base settings (CoreSettings) for Azure OpenAI, MCP servers (`MCP_SERVERS`), logging, and port.
+- core/logging.py: logging setup and correlation helpers.
+- mcp/auth.py: local and M365 token strategies for MCP scopes; includes get_authenticated_user_id() to extract user principal name from JWT tokens.
+- mcp/client.py: strict MCP protocol wrapper per configured MCP server.
+- mcp/tools.py: LangChain tool wrappers over MCP.
+- graph/workflow.py: LangGraph state graph and routing.
+- graph/orchestrator.py: shared run and stream orchestration.
+- llm/factory.py: Azure OpenAI / Foundry chat model factory.
 
-### langgraph-fabric-api (`packages/langgraph-fabric-api/src/langgraph_fabric_api/`)
+### langgraph-fabric-api (packages/langgraph-fabric-api/src/langgraph_fabric_api/)
 
-- `config.py`: `ApiSettings(CoreSettings)` reading from `packages/langgraph-fabric-api/.env` — adds OBO fields
-- `app.py`: FastAPI endpoints
-- `main.py`: API entrypoint
+- config.py: ApiSettings(CoreSettings) reading from packages/langgraph-fabric-api/.env; adds OBO fields.
+- app.py: FastAPI endpoints.
+- main.py: API entrypoint.
 
-### langgraph-fabric-console (`packages/langgraph-fabric-console/src/langgraph_fabric_console/`)
+### langgraph-fabric-console (packages/langgraph-fabric-console/src/langgraph_fabric_console/)
 
-- `config.py`: `ConsoleSettings(CoreSettings)` reading from `packages/langgraph-fabric-console/.env`
-- `console.py`: terminal experience with streaming; displays authenticated user tenant and user ID
-- `main.py`: console entrypoint
+- config.py: ConsoleSettings(CoreSettings) reading from packages/langgraph-fabric-console/.env.
+- console.py: terminal experience with streaming; displays authenticated user tenant and user ID.
+- main.py: console entrypoint.
 
-### langgraph-fabric-m365 (`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/`)
+### langgraph-fabric-m365 (packages/langgraph-fabric-m365/src/langgraph_fabric_m365/)
 
-- `config.py`: `M365Settings(CoreSettings)` reading from `packages/langgraph-fabric-m365/.env` — adds M365 bot fields
-- `app.py`: M365 Agents SDK adapter bridge and route handlers
-- `oauth.py`: M365 OAuth adaptive card flow, magic code handling, and M365 token resolution
-- `runtime.py`: M365 runtime env and SDK configuration
-- `main.py`: M365 adapter entrypoint
+- config.py: M365Settings(CoreSettings) reading from packages/langgraph-fabric-m365/.env; adds M365 bot fields.
+- app.py: M365 Agents SDK adapter bridge and route handlers.
+- oauth.py: M365 OAuth adaptive card flow, magic code handling, and M365 token resolution.
+- runtime.py: M365 runtime env and SDK configuration.
+- main.py: M365 adapter entrypoint.
 
 ## M365 implementation guardrails
 
 - Keep M365 OAuth behavior user-friendly: send adaptive sign-in cards, disable sign-in action after initiation, and allow magic code redemption from chat messages.
-- When writing M365 state code, use the shared state helpers in `langgraph_fabric_m365/oauth.py` instead of calling TurnState.get_value directly to avoid SDK compatibility issues.
-- Keep M365 files modular: routing in `app.py`, OAuth behavior in `oauth.py`, runtime configuration in `runtime.py`.
+- When writing M365 state code, use the shared state helpers in langgraph_fabric_m365/oauth.py instead of calling TurnState.get_value directly to avoid SDK compatibility issues.
+- Keep M365 files modular: routing in app.py, OAuth behavior in oauth.py, runtime configuration in runtime.py.
 
 ## Configuration rules
 
-- `CoreSettings` lives in `langgraph-fabric-core` and contains only shared settings (Azure OpenAI, Fabric MCP, logging, port, and optional microsoft_app_id/tenant_id for device-code auth).
-- Each client package (`api`, `console`, `m365`) defines its own settings class that extends `CoreSettings` and reads from a `.env` file in its own package directory.
-- Use the package-local `get_settings()` in each client package, not the core one.
+- CoreSettings lives in langgraph-fabric-core and contains only shared settings (Azure OpenAI, MCP_SERVERS, logging, port, and optional microsoft_app_id/tenant_id for device-code auth).
+- Each client package (api, console, m365) defines its own settings class that extends CoreSettings and reads from a .env file in its own package directory.
+- Use the package-local get_settings() in each client package, not the core one.
 
 ## Dependency rules
 
-- `langgraph-fabric-core` must not import from `langgraph_fabric_api`, `langgraph_fabric_console`, or `langgraph_fabric_m365`.
-- Interface packages (`api`, `console`, `m365`) declare `langgraph-fabric-core` as a workspace dependency.
-- Tests in each package only import from that package and `langgraph-fabric-core`.
+- langgraph-fabric-core must not import from langgraph_fabric_api, langgraph_fabric_console, or langgraph_fabric_m365.
+- Interface packages (api, console, m365) declare langgraph-fabric-core as a workspace dependency.
+- Tests in each package only import from that package and langgraph-fabric-core.
 
 ## Testing patterns
 
-- **JWT token decoding**: When testing JWT handling, create helper functions (e.g., `_create_jwt_token()`) that generate valid tokens with specified claims. Test happy paths (e.g., UPN extraction), fallback paths (e.g., OID fallback), and error cases (malformed tokens, invalid JSON).
-- **Authenticate credentials and token providers**: Mock credential objects with `SimpleNamespace` to control token responses. Test both success and failure paths (e.g., `ClientAuthenticationError`, `CredentialUnavailableError` fallbacks).
-- **Console/API integration**: Create fake orchestrators that capture calls to verify parameters are passed correctly (e.g., user_id, auth_mode, channel).
-- **Configuration loading**: Use `monkeypatch` to set env vars and verify settings are read correctly; test defaults and fallbacks.
+- JWT token decoding: when testing JWT handling, create helper functions (for example, _create_jwt_token()) that generate valid tokens with specified claims. Test happy paths (for example, UPN extraction), fallback paths (for example, OID fallback), and error cases (malformed tokens, invalid JSON).
+- Credential and token provider behavior: mock credential objects with SimpleNamespace to control token responses. Test both success and failure paths (for example, ClientAuthenticationError and CredentialUnavailableError fallbacks).
+- Console/API integration: create fake orchestrators that capture calls to verify parameters are passed correctly (for example, user_id, auth_mode, channel).
+- Configuration loading: use monkeypatch to set env vars and verify settings are read correctly; test defaults and fallbacks.
 
 ## Pull request quality bar
 
 - Keep the demo straightforward and easy to read.
-- Include tests for all newly added behavior:
-  - **Core utility functions** (e.g., auth, logging, LLM factories): Unit tests with mocks; test edge cases, error paths, and fallback scenarios.
-  - **Console/API endpoints and orchestration**: Integration tests that verify the flow end-to-end; unit tests for individual components.
-  - **Configuration and settings**: Unit tests for validation, defaults, and env file loading.
+- Include tests for all newly added behavior.
 - Do not merge with test warnings. Treat warnings as failures and either fix root causes or add a narrowly scoped, justified filter for known third-party teardown noise.
-- Prefer deterministic mocks over network calls in tests.
+- Prefer deterministic mocks over network calls.
 - Keep commit scope coherent and focused.

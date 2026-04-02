@@ -1,12 +1,12 @@
 ---
 title: Teams and Copilot Chat Guide
-description: How to set up and run the LangGraph Fabric Data Agent in Microsoft Teams and Copilot Chat
+description: How to set up and run the LangGraph MCP sample in Microsoft Teams and Copilot Chat
 ms.date: 2026-04-01
 ---
 
 # Teams and Copilot Chat Guide
 
-The `langgraph-fabric-m365` package is an M365 adapter that bridges the Fabric Data Agent to Microsoft Teams and Microsoft 365 Copilot Chat. It uses the M365 Agents SDK to handle Bot Framework messaging and an Azure Bot Service OAuth connection to authenticate users against Fabric.
+The `langgraph-fabric-m365` package is an M365 adapter that bridges the LangGraph agent to Microsoft Teams and Microsoft 365 Copilot Chat. It uses the M365 Agents SDK to handle Bot Framework messaging, validates the incoming Teams/Copilot JWT at the `/api/messages` endpoint, and uses Azure Bot Service OAuth connections for MCP-backed tools when needed.
 
 ## Prerequisites
 
@@ -18,15 +18,17 @@ The `langgraph-fabric-m365` package is an M365 adapter that bridges the Fabric D
 
 ## Authentication
 
-Authentication in the M365 adapter is user-delegated and flows through the Azure Bot Service OAuth connection:
+The M365 channel is protected by the Teams/Copilot JWT validated at the HTTP layer. If you configure MCP servers with `oauth_connection_name`, tool access is additionally user-delegated through the Azure Bot Service OAuth connection:
 
 1. A user sends a message in Teams or Copilot Chat.
 2. The adapter attempts to exchange the Bot Service OAuth connection token for a Fabric access token.
 3. If no token is available, the adapter sends an Adaptive Card sign-in prompt with a link to complete the OAuth flow.
 4. The user clicks **Sign in**, authenticates with their organizational account, and may be prompted to paste a numeric verification code back into the chat.
-5. On subsequent messages the cached token is used directly — no further sign-in prompts appear.
+5. On subsequent messages the cached token is used directly and no further sign-in prompts appear.
 
-The OAuth connection must be named `FabricOAuth2` (default) or the name configured in `FABRIC_OAUTH_CONNECTION_NAME`. It must target the Fabric API scope (`https://api.fabric.microsoft.com/.default`).
+Even if `MCP_SERVERS` is empty, the adapter still requires an authenticated Teams or Copilot Chat user because `/api/messages` is protected by JWT validation middleware. Chat-only mode means no MCP tool calls, not an anonymous channel.
+
+Each MCP server entry in `MCP_SERVERS` can specify its own `oauth_connection_name` (for example, `FabricOAuth2`). The OAuth connection must target the server's API scope. For Fabric, use `https://api.fabric.microsoft.com/.default`.
 
 See [azure-bot-service.md](azure-bot-service.md) for step-by-step instructions on creating the OAuth connection in the Azure portal.
 
@@ -41,7 +43,9 @@ Copy `packages/langgraph-fabric-m365/.env.example` to `packages/langgraph-fabric
 MICROSOFT_APP_ID=<your-bot-app-client-id>
 MICROSOFT_APP_PASSWORD=<your-bot-app-client-secret>
 MICROSOFT_TENANT_ID=<your-tenant-id>
-FABRIC_OAUTH_CONNECTION_NAME=FabricOAuth2
+
+# MCP servers (optional, set oauth_connection_name per server)
+MCP_SERVERS=[{"name":"fabric","description":"Fabric analytics MCP server","url":"https://api.fabric.microsoft.com/v1/mcp/workspaces/<workspace-id>/dataagents/<agent-id>/agent","scope":"https://api.fabric.microsoft.com/.default","oauth_connection_name":"FabricOAuth2","timeout_seconds":120,"poll_interval_seconds":2}]
 
 # M365 Agents SDK service connection
 CONNECTIONS__SERVICE_CONNECTION__ID=service_connection
@@ -125,13 +129,10 @@ All settings are read from `packages/langgraph-fabric-m365/.env` via the M365 se
 | `AZURE_OPENAI_ENDPOINT` | Yes | — | Azure OpenAI / Foundry project endpoint |
 | `AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME` | Yes | — | Chat model deployment name (e.g. `gpt-4o`) |
 | `AZURE_OPENAI_API_VERSION` | No | `2025-11-15-preview` | Azure OpenAI API version |
-| `FABRIC_DATA_AGENT_MCP_URL` | Yes | — | Fabric Data Agent MCP endpoint URL |
-| `FABRIC_DATA_AGENT_SCOPE` | No | `https://api.fabric.microsoft.com/.default` | OAuth scope for Fabric token |
-| `FABRIC_DATA_AGENT_TIMEOUT_SECONDS` | No | `120` | Maximum seconds to wait for an MCP response |
+| `MCP_SERVERS` | No | `[]` | JSON array of MCP servers with `name`, `description`, `url`, `scope`, `oauth_connection_name`, `timeout_seconds`, `poll_interval_seconds` |
 | `MICROSOFT_APP_ID` | Yes | — | Bot Entra app Application (client) ID |
 | `MICROSOFT_APP_PASSWORD` | Yes | — | Bot Entra app client secret |
 | `MICROSOFT_TENANT_ID` | Yes | — | Azure tenant ID |
-| `FABRIC_OAUTH_CONNECTION_NAME` | No | `FabricOAuth2` | Name of the Bot Service OAuth connection for Fabric |
 | `CONNECTIONS__SERVICE_CONNECTION__ID` | Yes | — | M365 Agents SDK service connection ID |
 | `CONNECTIONS__SERVICE_CONNECTION__NAME` | No | `Default Service Connection` | Service connection display name |
 | `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID` | Yes | — | Service connection client ID (same as `MICROSOFT_APP_ID`) |

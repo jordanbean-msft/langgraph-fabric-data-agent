@@ -28,9 +28,10 @@ class M365Settings(CoreSettings):
     microsoft_app_id: str = Field(alias="MICROSOFT_APP_ID")
     microsoft_app_password: str = Field(alias="MICROSOFT_APP_PASSWORD")
     microsoft_tenant_id: str = Field(alias="MICROSOFT_TENANT_ID")
-    fabric_oauth_connection_name: str = Field(default="FabricOAuth2", alias="FABRIC_OAUTH_CONNECTION_NAME")
 
-    connections_service_connection_id: str = Field(default="", alias="CONNECTIONS__SERVICE_CONNECTION__ID")
+    connections_service_connection_id: str = Field(
+        default="", alias="CONNECTIONS__SERVICE_CONNECTION__ID"
+    )
     connections_service_connection_name: str = Field(
         default="",
         alias="CONNECTIONS__SERVICE_CONNECTION__NAME",

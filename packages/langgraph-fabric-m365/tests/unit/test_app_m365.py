@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from langgraph_fabric_core.core.config import McpServerConfig
 from langgraph_fabric_m365.app import HISTORY_KEY, create_m365_app
 from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import PENDING_PROMPT_KEY
@@ -32,10 +33,17 @@ def _make_settings(**overrides) -> M365Settings:
         "azure_openai_deployment_name": "gpt-5.4",
         "azure_openai_api_version": "2025-11-15-preview",
         "azure_openai_scope": "https://ai.azure.com/.default",
-        "fabric_data_agent_mcp_url": "https://api.fabric.microsoft.com/v1/mcp/demo",
-        "fabric_data_agent_scope": "https://api.fabric.microsoft.com/.default",
-        "fabric_data_agent_timeout_seconds": 120,
-        "fabric_data_agent_poll_interval_seconds": 2,
+        "mcp_servers": [
+            McpServerConfig(
+                name="fabric",
+                description="Fabric MCP",
+                url="https://api.fabric.microsoft.com/v1/mcp/demo",
+                scope="https://api.fabric.microsoft.com/.default",
+                oauth_connection_name="FabricOAuth2",
+                timeout_seconds=120,
+                poll_interval_seconds=2,
+            )
+        ],
         "log_level": "INFO",
         "log_level_override": None,
         "port": 8000,
@@ -48,7 +56,6 @@ def _make_settings(**overrides) -> M365Settings:
         "microsoft_app_id": "33333333-3333-3333-3333-333333333333",
         "microsoft_app_password": "secret",
         "microsoft_tenant_id": "44444444-4444-4444-4444-444444444444",
-        "fabric_oauth_connection_name": "FabricOAuth2",
     }
     base.update(overrides)
     return M365Settings.model_construct(**base)
@@ -140,7 +147,7 @@ async def test_message_handler_calls_orchestrator_and_sends_response(
     assert call_kwargs["prompt"] == "What is the answer?"
     assert call_kwargs["auth_mode"] == "m365"
     assert call_kwargs["user_id"] == "user-1"
-    assert call_kwargs["fabric_user_token"] == "fabric-token"
+    assert call_kwargs["mcp_user_tokens"] == {"fabric": "fabric-token"}
     context.streaming_response.set_generated_by_ai_label.assert_called_once_with(True)
     context.streaming_response.queue_text_chunk.assert_any_call("Here is the answer")
     context.streaming_response.end_stream.assert_awaited_once()
@@ -366,7 +373,7 @@ async def test_message_handler_requires_streaming_response(
     orchestrator = MagicMock()
     orchestrator.stream = MagicMock(
         side_effect=lambda **_: _agen(
-            "\n[tool] Querying Fabric Data Agent...\n",
+            "\n[tool] Querying mcp_fabric...\n",
             "Final answer",
         )
     )
@@ -404,7 +411,7 @@ async def test_message_handler_uses_streaming_response_queue_updates(
     orchestrator = MagicMock()
     orchestrator.stream = MagicMock(
         side_effect=lambda **_: _agen(
-            "\n[tool] Querying Fabric Data Agent...\n",
+            "\n[tool] Querying mcp_fabric...\n",
             "Final",
             " answer",
         )
@@ -434,12 +441,45 @@ async def test_message_handler_uses_streaming_response_queue_updates(
     context.streaming_response.queue_informative_update.assert_any_call(
         "Working on your request..."
     )
-    context.streaming_response.queue_informative_update.assert_any_call(
-        "Querying Fabric Data Agent..."
-    )
+    context.streaming_response.queue_informative_update.assert_any_call("Querying mcp_fabric...")
     context.streaming_response.queue_text_chunk.assert_any_call("Final")
     context.streaming_response.queue_text_chunk.assert_any_call(" answer")
     context.streaming_response.end_stream.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_message_handler_supports_chat_only_mode_without_mcp_servers(
+    sdk_mocks: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _make_settings(mcp_servers=[])
+    orchestrator = MagicMock()
+    orchestrator.stream = MagicMock(side_effect=lambda **_: _agen("Chat-only response"))
+
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.app.get_m365_user_token",
+        AsyncMock(),
+    )
+
+    agent_app = await create_m365_app(settings, orchestrator)
+    message_handler = agent_app._handlers["message"]
+
+    context = SimpleNamespace(
+        activity=SimpleNamespace(
+            text="Hello there",
+            from_property=SimpleNamespace(id="user-1"),
+            channel_id="msteams",
+        ),
+        send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
+    )
+
+    await message_handler(context, _FakeState())
+
+    orchestrator.stream.assert_called_once()
+    call_kwargs = orchestrator.stream.call_args.kwargs
+    assert call_kwargs["mcp_user_tokens"] == {}
+    context.streaming_response.queue_text_chunk.assert_any_call("Chat-only response")
 
 
 @pytest.mark.asyncio

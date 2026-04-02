@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, messages_from_dict
+from langgraph_fabric_core.core.config import McpServerConfig
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from langgraph_fabric_m365.app import HISTORY_KEY, create_m365_app
 from langgraph_fabric_m365.config import M365Settings
@@ -32,10 +33,17 @@ def _make_settings(**overrides) -> M365Settings:
         "azure_openai_deployment_name": "gpt-5.4",
         "azure_openai_api_version": "2025-11-15-preview",
         "azure_openai_scope": "https://ai.azure.com/.default",
-        "fabric_data_agent_mcp_url": "https://api.fabric.microsoft.com/v1/mcp/demo",
-        "fabric_data_agent_scope": "https://api.fabric.microsoft.com/.default",
-        "fabric_data_agent_timeout_seconds": 120,
-        "fabric_data_agent_poll_interval_seconds": 2,
+        "mcp_servers": [
+            McpServerConfig(
+                name="fabric",
+                description="Fabric MCP",
+                url="https://api.fabric.microsoft.com/v1/mcp/demo",
+                scope="https://api.fabric.microsoft.com/.default",
+                oauth_connection_name="FabricOAuth2",
+                timeout_seconds=120,
+                poll_interval_seconds=2,
+            )
+        ],
         "log_level": "INFO",
         "log_level_override": None,
         "port": 8000,
@@ -48,7 +56,6 @@ def _make_settings(**overrides) -> M365Settings:
         "microsoft_app_id": "33333333-3333-3333-3333-333333333333",
         "microsoft_app_password": "secret",
         "microsoft_tenant_id": "44444444-4444-4444-4444-444444444444",
-        "fabric_oauth_connection_name": "FabricOAuth2",
     }
     base.update(overrides)
     return M365Settings.model_construct(**base)

@@ -1,11 +1,23 @@
 """Core application configuration shared by all client packages."""
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class McpServerConfig(BaseModel):
+    """Configuration for a single MCP server endpoint."""
+
+    name: str
+    description: str
+    url: str
+    scope: str
+    oauth_connection_name: str = ""
+    timeout_seconds: int = 120
+    poll_interval_seconds: int = 2
+
+
 class CoreSettings(BaseSettings):
-    """Shared environment-backed settings for Azure OpenAI, Fabric MCP, and logging.
+    """Shared environment-backed settings for Azure OpenAI, MCP, and logging.
 
     Each client package (console, api, m365) inherits from this class and
     specifies its own env_file and any additional package-specific fields.
@@ -24,19 +36,14 @@ class CoreSettings(BaseSettings):
 
     azure_openai_endpoint: str = Field(alias="AZURE_OPENAI_ENDPOINT")
     azure_openai_deployment_name: str = Field(alias="AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME")
-    azure_openai_api_version: str = Field(default="2025-11-15-preview", alias="AZURE_OPENAI_API_VERSION")
-    azure_openai_scope: str = Field(default="https://ai.azure.com/.default", alias="AZURE_OPENAI_SCOPE")
+    azure_openai_api_version: str = Field(
+        default="2025-11-15-preview", alias="AZURE_OPENAI_API_VERSION"
+    )
+    azure_openai_scope: str = Field(
+        default="https://ai.azure.com/.default", alias="AZURE_OPENAI_SCOPE"
+    )
 
-    fabric_data_agent_mcp_url: str = Field(alias="FABRIC_DATA_AGENT_MCP_URL")
-    fabric_data_agent_scope: str = Field(
-        default="https://api.fabric.microsoft.com/.default",
-        alias="FABRIC_DATA_AGENT_SCOPE",
-    )
-    fabric_data_agent_timeout_seconds: int = Field(default=120, alias="FABRIC_DATA_AGENT_TIMEOUT_SECONDS")
-    fabric_data_agent_poll_interval_seconds: int = Field(
-        default=2,
-        alias="FABRIC_DATA_AGENT_POLL_INTERVAL_SECONDS",
-    )
+    mcp_servers: list[McpServerConfig] = Field(default_factory=list, alias="MCP_SERVERS")
 
     # Optional Microsoft app registration fields used for local device-code fallback.
     microsoft_app_id: str = Field(default="", alias="MICROSOFT_APP_ID")

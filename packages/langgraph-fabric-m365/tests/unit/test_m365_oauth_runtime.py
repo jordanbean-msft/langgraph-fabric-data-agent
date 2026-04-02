@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from aiohttp.client_exceptions import ClientResponseError
+from langgraph_fabric_core.core.config import McpServerConfig
 from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import (
     OAUTH_CARD_ACTIVITY_ID_KEY,
@@ -44,10 +45,17 @@ def _make_settings(**overrides: str) -> M365Settings:
         "azure_openai_deployment_name": "gpt-5.4",
         "azure_openai_api_version": "2025-11-15-preview",
         "azure_openai_scope": "https://ai.azure.com/.default",
-        "fabric_data_agent_mcp_url": "https://api.fabric.microsoft.com/v1/mcp/demo",
-        "fabric_data_agent_scope": "https://api.fabric.microsoft.com/.default",
-        "fabric_data_agent_timeout_seconds": 120,
-        "fabric_data_agent_poll_interval_seconds": 2,
+        "mcp_servers": [
+            McpServerConfig(
+                name="fabric",
+                description="Fabric MCP",
+                url="https://api.fabric.microsoft.com/v1/mcp/demo",
+                scope="https://api.fabric.microsoft.com/.default",
+                oauth_connection_name="FabricOAuth2",
+                timeout_seconds=120,
+                poll_interval_seconds=2,
+            )
+        ],
         "log_level": "INFO",
         "log_level_override": None,
         "port": 8000,
@@ -60,7 +68,6 @@ def _make_settings(**overrides: str) -> M365Settings:
         "microsoft_app_id": "33333333-3333-3333-3333-333333333333",
         "microsoft_app_password": "secret",
         "microsoft_tenant_id": "44444444-4444-4444-4444-444444444444",
-        "fabric_oauth_connection_name": "FabricOAuth2",
     }
     base.update(overrides)
     return M365Settings.model_construct(**base)
@@ -117,14 +124,18 @@ def testextract_magic_code_accepts_numeric_code_only() -> None:
 
 def test_extract_sign_in_link_handles_direct_and_nested_shapes() -> None:
     direct = SimpleNamespace(sign_in_link="https://example.com/direct")
-    nested = SimpleNamespace(sign_in_resource=SimpleNamespace(sign_in_link="https://example.com/nested"))
+    nested = SimpleNamespace(
+        sign_in_resource=SimpleNamespace(sign_in_link="https://example.com/nested")
+    )
 
     assert _extract_sign_in_link(direct) == "https://example.com/direct"
     assert _extract_sign_in_link(nested) == "https://example.com/nested"
 
 
 @pytest.mark.asyncio
-async def testget_m365_user_token_sends_adaptive_card_when_signin_required(monkeypatch: pytest.MonkeyPatch) -> None:
+async def testget_m365_user_token_sends_adaptive_card_when_signin_required(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _make_settings()
 
     class _FakeState:
@@ -179,6 +190,7 @@ async def testget_m365_user_token_sends_adaptive_card_when_signin_required(monke
         context=context,
         state=state,
         settings=settings,
+        connection_name="FabricOAuth2",
         user_id="user-1",
         channel_id="msteams",
     )
@@ -195,7 +207,9 @@ async def testget_m365_user_token_sends_adaptive_card_when_signin_required(monke
 
 
 @pytest.mark.asyncio
-async def testget_m365_user_token_redeems_magic_code_and_disables_card(monkeypatch: pytest.MonkeyPatch) -> None:
+async def testget_m365_user_token_redeems_magic_code_and_disables_card(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings = _make_settings()
 
     class _FakeState:
@@ -246,6 +260,7 @@ async def testget_m365_user_token_redeems_magic_code_and_disables_card(monkeypat
         context=context,
         state=state,
         settings=settings,
+        connection_name="FabricOAuth2",
         user_id="user-1",
         channel_id="msteams",
         magic_code="123456",
@@ -343,9 +358,7 @@ async def testdisable_signin_card_updates_activity_with_disabled_card() -> None:
     updated = context.update_activity.await_args.args[0]
     # The SDK may wrap the dict as an Attachment object; handle both shapes.
     raw_attachment = updated.attachments[0]
-    card_content = (
-        getattr(raw_attachment, "content", None) or raw_attachment["content"]
-    )
+    card_content = getattr(raw_attachment, "content", None) or raw_attachment["content"]
     assert card_content["actions"][0]["isEnabled"] is False
 
 
@@ -376,6 +389,7 @@ async def testget_m365_user_token_returns_none_when_no_token_client() -> None:
         context=context,
         state=state,
         settings=_make_settings(),
+        connection_name="FabricOAuth2",
         user_id="u1",
         channel_id="msteams",
     )
@@ -395,6 +409,7 @@ async def testget_m365_user_token_returns_none_when_no_channel_id() -> None:
         context=context,
         state=state,
         settings=_make_settings(),
+        connection_name="FabricOAuth2",
         user_id="u1",
         channel_id=None,  # no channel id
     )
@@ -447,6 +462,7 @@ async def testget_m365_user_token_handles_404_and_prompts_signin(
         context=context,
         state=state,
         settings=settings,
+        connection_name="FabricOAuth2",
         user_id="u1",
         channel_id="msteams",
     )
@@ -480,6 +496,7 @@ async def testget_m365_user_token_handles_value_error_gracefully(
         context=context,
         state=state,
         settings=settings,
+        connection_name="FabricOAuth2",
         user_id="u1",
         channel_id="msteams",
     )
@@ -499,11 +516,9 @@ def testbuild_m365_environment_includes_all_required_settings_keys() -> None:
     assert env["MICROSOFT_APP_ID"] == settings.microsoft_app_id
     assert env["MICROSOFT_APP_PASSWORD"] == settings.microsoft_app_password
     assert env["MICROSOFT_TENANT_ID"] == settings.microsoft_tenant_id
-    assert env["FABRIC_OAUTH_CONNECTION_NAME"] == settings.fabric_oauth_connection_name
     assert env["CONNECTIONS__SERVICE_CONNECTION__ID"] == settings.connections_service_connection_id
     assert (
-        env["CONNECTIONS__SERVICE_CONNECTION__NAME"]
-        == settings.connections_service_connection_name
+        env["CONNECTIONS__SERVICE_CONNECTION__NAME"] == settings.connections_service_connection_name
     )
     assert (
         env["CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID"]

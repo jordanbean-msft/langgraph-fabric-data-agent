@@ -24,6 +24,19 @@ def test_create_server_app_registers_messages_routes() -> None:
     assert app[main_m365.ADAPTER_STATE_KEY] is agent_app.adapter
 
 
+def test_create_server_app_uses_jwt_authorization_middleware() -> None:
+    agent_app = SimpleNamespace(adapter=object())
+    settings = SimpleNamespace(
+        microsoft_app_id="app-id",
+        microsoft_tenant_id="tenant-id",
+        microsoft_app_password="secret",
+    )
+
+    app = main_m365.create_server_app(agent_app, settings)
+
+    assert main_m365.jwt_authorization_middleware in app.middlewares
+
+
 def test_main_starts_server_on_configured_port(monkeypatch) -> None:
     settings = SimpleNamespace(log_level="INFO", log_level_override=None, port=8765)
     agent_app = SimpleNamespace(adapter=object())

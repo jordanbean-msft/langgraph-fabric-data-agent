@@ -1,14 +1,14 @@
 ---
 title: API Guide
-description: How to integrate with and call the LangGraph Fabric Data Agent REST API
+description: How to integrate with and call the LangGraph MCP REST API sample
 ms.date: 2026-04-01
 ---
 
 # API Guide
 
-The `langgraph-fabric-api` package is a standalone FastAPI server that exposes the Fabric Data Agent over HTTP. Your application authenticates its users, presents the resulting Bearer token to the API, and streams the agent's response back using Server-Sent Events (SSE).
+The `langgraph-fabric-api` package is a standalone FastAPI server that exposes one or more MCP-backed tools, or plain chat-only mode, over HTTP. Your application authenticates its users and streams the agent's response back using Server-Sent Events (SSE).
 
-This guide is for **developers building applications** that integrate with the Fabric Data Agent API.
+This guide is for **developers building applications** that integrate with this API. The examples use Microsoft Fabric as a concrete MCP backend.
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ This guide is for **developers building applications** that integrate with the F
 The authentication flow has two halves: one handled by your **client application** and one handled by the **API server** internally.
 
 ```
-Client App          API Server           Microsoft Entra ID       Fabric Data Agent
+Client App          API Server           Microsoft Entra ID       MCP Server
     │                    │                       │                       │
     │ 1. Auth Code flow  │                       │                       │
     │──────────────────────────────────────────>│                       │
@@ -33,7 +33,7 @@ Client App          API Server           Microsoft Entra ID       Fabric Data Ag
     │──────────────────>│                        │                       │
     │                    │ 4. OBO exchange        │                       │
     │                    │──────────────────────>│                       │
-    │                    │ 5. Fabric-scoped token │                       │
+    │                    │ 5. Scope-specific token│                       │
     │                    │<──────────────────────│                       │
     │                    │                        │  6. MCP call with    │
     │                    │──────────────────────────────────────────────>│
@@ -60,12 +60,12 @@ Authorization: Bearer <user-jwt>
 
 ### Server side: On-Behalf-Of (OBO) flow
 
-The API server validates the incoming JWT and performs an [On-Behalf-Of exchange](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) internally to obtain a Fabric-scoped access token:
+The API server validates the incoming JWT on every request. If MCP servers are configured, it also performs an [On-Behalf-Of exchange](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) internally to obtain an access token for each configured MCP server scope:
 
 1. The server uses its own confidential client credentials (`MICROSOFT_APP_ID` + `MICROSOFT_APP_PASSWORD`) to call Entra ID.
 2. The incoming user JWT is supplied as `user_assertion`.
-3. Entra ID returns a new token scoped to `https://api.fabric.microsoft.com/.default`.
-4. That Fabric token is forwarded to the Fabric Data Agent — the caller never sees it.
+3. Entra ID returns a new token for the configured server scope, for example `https://api.fabric.microsoft.com/.default`.
+4. That server token is forwarded to the matching MCP server. The caller never sees it.
 
 ### Entra ID app registration for the API server
 
@@ -77,7 +77,7 @@ Register the API server as a confidential application in Entra ID. Required sett
 | Platform | Web |
 | Client secret | Required — stored in `MICROSOFT_APP_PASSWORD` |
 | Exposed API scope | `access_as_user` (or any name you choose) |
-| API permission | `Delegated` — `https://api.fabric.microsoft.com/` → `Item.Read.All` (the Fabric scope required by your Data Agent) |
+| API permission | `Delegated` — grant the permissions required by each MCP backend your API will call. For Fabric, use `https://api.fabric.microsoft.com/` → `Item.Read.All`. |
 
 See the [app registration guide](app-registration.md) for the full registration walkthrough.
 
@@ -138,6 +138,8 @@ data: [DONE]
 ```
 
 Chunks contain partial LLM output tokens and may also include tool-call progress messages. Concatenate all `data:` payloads until the `done` event is received to assemble the full response.
+
+If `MCP_SERVERS` is empty or omitted, the endpoint runs in chat-only mode and does not require an `Authorization` header.
 
 ## Example: Python client using `httpx`
 
@@ -251,12 +253,10 @@ All settings are read from `packages/langgraph-fabric-api/.env` via the API sett
 | `AZURE_OPENAI_ENDPOINT` | Yes | — | Azure OpenAI / Foundry project endpoint |
 | `AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME` | Yes | — | Chat model deployment name (e.g. `gpt-4o`) |
 | `AZURE_OPENAI_API_VERSION` | No | `2025-11-15-preview` | Azure OpenAI API version |
-| `FABRIC_DATA_AGENT_MCP_URL` | Yes | — | Fabric Data Agent MCP endpoint URL |
-| `FABRIC_DATA_AGENT_SCOPE` | No | `https://api.fabric.microsoft.com/.default` | Fabric scope used in the OBO exchange |
+| `MCP_SERVERS` | Yes | — | JSON array of MCP servers with `name`, `description`, `url`, `scope`, `oauth_connection_name`, `timeout_seconds`, `poll_interval_seconds` |
 | `MICROSOFT_APP_ID` | Yes | — | Client ID of the API server's Entra app registration |
 | `MICROSOFT_APP_PASSWORD` | Yes | — | Client secret for the OBO exchange |
 | `MICROSOFT_TENANT_ID` | Yes | — | Entra tenant ID |
-| `FABRIC_DATA_AGENT_TIMEOUT_SECONDS` | No | `120` | Maximum seconds to wait for an MCP response |
 | `PORT` | No | `8000` | Port the server listens on |
 | `LOG_LEVEL` | No | `INFO` | Root log level |
 

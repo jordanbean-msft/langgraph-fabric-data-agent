@@ -1,12 +1,19 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from langgraph_fabric_core.fabric.tools import _resolve_query_argument_name, build_fabric_tool
+from langgraph_fabric_core.mcp.tools import _resolve_query_argument_name, build_mcp_tool
+
+
+class _Server:
+    name = "fabric"
+    description = "Fabric MCP"
+    scope = "https://api.fabric.microsoft.com/.default"
 
 
 @pytest.mark.asyncio
-async def test_build_fabric_tool_invokes_mcp_tool_with_state_auth_context() -> None:
+async def test_build_mcp_tool_invokes_mcp_tool_with_state_auth_context() -> None:
     client = AsyncMock()
+    client.server_config = _Server()
     client.list_tools.return_value = [
         {
             "name": "fabric_query",
@@ -19,11 +26,11 @@ async def test_build_fabric_tool_invokes_mcp_tool_with_state_auth_context() -> N
     ]
     client.call_tool.return_value = "customer results"
 
-    tool = build_fabric_tool(client)
+    tool = build_mcp_tool(client)
     state = {
         "auth_mode": "local",
         "user_id": "console-user",
-        "fabric_user_token": None,
+        "mcp_user_tokens": {},
     }
 
     assert tool.coroutine is not None
@@ -40,20 +47,22 @@ async def test_build_fabric_tool_invokes_mcp_tool_with_state_auth_context() -> N
     auth_context = client.call_tool.await_args.kwargs["auth_context"]
     assert auth_context.mode == "local"
     assert auth_context.user_id == "console-user"
+    assert auth_context.scope == _Server.scope
     assert auth_context.user_token is None
 
 
 @pytest.mark.asyncio
-async def test_build_fabric_tool_defaults_tool_name_when_mcp_list_is_empty() -> None:
+async def test_build_mcp_tool_defaults_tool_name_when_mcp_list_is_empty() -> None:
     client = AsyncMock()
+    client.server_config = _Server()
     client.list_tools.return_value = []
     client.call_tool.return_value = "ok"
 
-    tool = build_fabric_tool(client)
+    tool = build_mcp_tool(client)
     state = {
         "auth_mode": "m365",
         "user_id": "m365-user",
-        "fabric_user_token": "token-123",
+        "mcp_user_tokens": {"fabric": "token-123"},
     }
 
     assert tool.coroutine is not None
@@ -71,22 +80,25 @@ async def test_build_fabric_tool_defaults_tool_name_when_mcp_list_is_empty() -> 
 
 
 @pytest.mark.asyncio
-async def test_build_fabric_tool_returns_error_message_on_mcp_failure() -> None:
+async def test_build_mcp_tool_returns_error_message_on_mcp_failure() -> None:
     client = AsyncMock()
-    client.list_tools.return_value = [{"name": "fabric_query", "inputSchema": {"properties": {"query": {}}}}]
+    client.server_config = _Server()
+    client.list_tools.return_value = [
+        {"name": "fabric_query", "inputSchema": {"properties": {"query": {}}}}
+    ]
     client.call_tool.side_effect = RuntimeError("upstream failure")
 
-    tool = build_fabric_tool(client)
+    tool = build_mcp_tool(client)
     state = {
         "auth_mode": "local",
         "user_id": "console-user",
-        "fabric_user_token": None,
+        "mcp_user_tokens": {},
     }
 
     assert tool.coroutine is not None
     result = await tool.coroutine(query="sales", state=state)
 
-    assert "Fabric Data Agent query failed:" in result
+    assert "MCP server 'fabric' query failed:" in result
     assert "upstream failure" in result
 
 

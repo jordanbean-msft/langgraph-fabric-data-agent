@@ -14,7 +14,7 @@ class ApiSettings(CoreSettings):
     """Settings for the FastAPI server.
 
     Extends CoreSettings with fields required for the On-Behalf-Of (OBO)
-    token exchange used to obtain a Fabric-scoped token from the caller's JWT.
+    token exchange used to obtain scope-specific MCP tokens from the caller's JWT.
     Reads from `.env` in the package directory.
     """
 

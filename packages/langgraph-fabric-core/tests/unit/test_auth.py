@@ -6,7 +6,12 @@ import pytest
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import CredentialUnavailableError
 from langgraph_fabric_core.core.config import CoreSettings
-from langgraph_fabric_core.fabric.auth import AuthContext, FabricTokenProvider
+from langgraph_fabric_core.mcp.auth import AuthContext, TokenProvider
+
+_MCP_SERVERS_JSON = (
+    '[{"name":"fabric","description":"Fabric MCP","url":"https://api.fabric.microsoft.com/v1/mcp/demo",'
+    '"scope":"https://api.fabric.microsoft.com/.default","oauth_connection_name":"FabricOAuth2"}]'
+)
 
 
 @pytest.fixture(name="settings_fixture")
@@ -16,7 +21,7 @@ def settings_fixture_data(monkeypatch):
     )
     monkeypatch.setenv("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME", "gpt-5.4")
     monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2025-11-15-preview")
-    monkeypatch.setenv("FABRIC_DATA_AGENT_MCP_URL", "https://api.fabric.microsoft.com/v1/mcp/demo")
+    monkeypatch.setenv("MCP_SERVERS", _MCP_SERVERS_JSON)
     monkeypatch.setenv("MICROSOFT_TENANT_ID", "")
     return CoreSettings()
 
@@ -27,23 +32,30 @@ def _create_settings_with_tenant(monkeypatch, tenant_id: str) -> CoreSettings:
     )
     monkeypatch.setenv("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME", "gpt-5.4")
     monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2025-11-15-preview")
-    monkeypatch.setenv("FABRIC_DATA_AGENT_MCP_URL", "https://api.fabric.microsoft.com/v1/mcp/demo")
+    monkeypatch.setenv("MCP_SERVERS", _MCP_SERVERS_JSON)
     monkeypatch.setenv("MICROSOFT_TENANT_ID", tenant_id)
     return CoreSettings()
 
 
 @pytest.mark.asyncio
 async def test_m365_mode_requires_token(settings_fixture):
-    provider = FabricTokenProvider(settings_fixture)
-    context = AuthContext(mode="m365", user_id="u1", user_token=None)
+    provider = TokenProvider(settings_fixture)
+    context = AuthContext(
+        mode="m365",
+        user_id="u1",
+        scope="https://api.fabric.microsoft.com/.default",
+        user_token=None,
+    )
     with pytest.raises(ValueError):
         await provider.get_token(context)
 
 
 @pytest.mark.asyncio
 async def test_api_mode_requires_token(settings_fixture):
-    provider = FabricTokenProvider(settings_fixture)
-    context = AuthContext(mode="api", user_id="u1", user_token=None)
+    provider = TokenProvider(settings_fixture)
+    context = AuthContext(
+        mode="api", user_id="u1", scope="https://api.fabric.microsoft.com/.default", user_token=None
+    )
     with pytest.raises(ValueError):
         await provider.get_token(context)
 
@@ -52,7 +64,7 @@ async def test_api_mode_requires_token(settings_fixture):
 async def test_local_mode_falls_back_to_device_code(settings_fixture):
     tenant_id = settings_fixture.microsoft_tenant_id
     device_token = _create_jwt_token(tid=tenant_id)
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(
             get_token=lambda _scope: (_ for _ in ()).throw(ClientAuthenticationError("x"))
@@ -62,7 +74,9 @@ async def test_local_mode_falls_back_to_device_code(settings_fixture):
         ),
     )
 
-    token = await provider.get_token(AuthContext(mode="local", user_id="u1"))
+    token = await provider.get_token(
+        AuthContext(mode="local", user_id="u1", scope="https://api.fabric.microsoft.com/.default")
+    )
     assert token == device_token
 
 
@@ -72,7 +86,7 @@ async def test_local_mode_falls_back_to_device_code_when_default_credential_is_u
 ):
     tenant_id = settings_fixture.microsoft_tenant_id
     device_token = _create_jwt_token(tid=tenant_id)
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(
             get_token=lambda _scope: (_ for _ in ()).throw(CredentialUnavailableError("x"))
@@ -82,7 +96,9 @@ async def test_local_mode_falls_back_to_device_code_when_default_credential_is_u
         ),
     )
 
-    token = await provider.get_token(AuthContext(mode="local", user_id="u1"))
+    token = await provider.get_token(
+        AuthContext(mode="local", user_id="u1", scope="https://api.fabric.microsoft.com/.default")
+    )
     assert token == device_token
 
 
@@ -101,7 +117,7 @@ async def test_local_mode_enforces_configured_tenant_and_falls_back_to_device_co
         tid="11111111-1111-1111-1111-111111111111",
     )
 
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings,
         default_credential=SimpleNamespace(
             get_token=lambda _scope: SimpleNamespace(token=default_token)
@@ -111,7 +127,9 @@ async def test_local_mode_enforces_configured_tenant_and_falls_back_to_device_co
         ),
     )
 
-    token = await provider.get_token(AuthContext(mode="local", user_id="u1"))
+    token = await provider.get_token(
+        AuthContext(mode="local", user_id="u1", scope="https://api.fabric.microsoft.com/.default")
+    )
     assert token == device_token
 
 
@@ -130,7 +148,7 @@ async def test_local_mode_enforces_configured_tenant_and_raises_when_unmatched(m
         tid="22222222-2222-2222-2222-222222222222",
     )
 
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings,
         default_credential=SimpleNamespace(
             get_token=lambda _scope: SimpleNamespace(token=default_token)
@@ -141,7 +159,11 @@ async def test_local_mode_enforces_configured_tenant_and_raises_when_unmatched(m
     )
 
     with pytest.raises(ValueError, match="MICROSOFT_TENANT_ID"):
-        await provider.get_token(AuthContext(mode="local", user_id="u1"))
+        await provider.get_token(
+            AuthContext(
+                mode="local", user_id="u1", scope="https://api.fabric.microsoft.com/.default"
+            )
+        )
 
 
 @pytest.mark.asyncio
@@ -153,6 +175,7 @@ async def test_local_mode_retries_device_code_with_azure_cli_public_client_on_in
         tenant_id="11111111-1111-1111-1111-111111111111",
     )
     monkeypatch.setenv("MICROSOFT_APP_ID", "18b54e45-71e8-4fb3-8826-80d8c2c02f35")
+    monkeypatch.setenv("MCP_SERVERS", _MCP_SERVERS_JSON)
     settings = CoreSettings()
 
     fallback_token = _create_jwt_token(
@@ -160,7 +183,7 @@ async def test_local_mode_retries_device_code_with_azure_cli_public_client_on_in
         tid="11111111-1111-1111-1111-111111111111",
     )
 
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings,
         default_credential=SimpleNamespace(
             get_token=lambda _scope: (_ for _ in ()).throw(ClientAuthenticationError("x"))
@@ -177,7 +200,9 @@ async def test_local_mode_retries_device_code_with_azure_cli_public_client_on_in
         ),
     )
 
-    token = await provider.get_token(AuthContext(mode="local", user_id="u1"))
+    token = await provider.get_token(
+        AuthContext(mode="local", user_id="u1", scope="https://api.fabric.microsoft.com/.default")
+    )
     assert token == fallback_token
 
 
@@ -220,12 +245,12 @@ def test_get_authenticated_user_id_extracts_upn(settings_fixture):
         upn="user@example.com",
         tid=settings_fixture.microsoft_tenant_id,
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    user_id = provider.get_authenticated_user_id()
+    user_id = provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
     assert user_id == "user@example.com"
 
 
@@ -235,12 +260,12 @@ def test_get_authenticated_user_id_prefers_preferred_username_over_upn(settings_
         upn="user@example.com",
         tid=settings_fixture.microsoft_tenant_id,
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    user_id = provider.get_authenticated_user_id()
+    user_id = provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
     assert user_id == "preferred@example.com"
 
 
@@ -250,12 +275,12 @@ def test_get_authenticated_user_id_falls_back_to_oid(settings_fixture):
         oid="12345678-1234-1234-1234-123456789012",
         tid=settings_fixture.microsoft_tenant_id,
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    user_id = provider.get_authenticated_user_id()
+    user_id = provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
     assert user_id == "12345678-1234-1234-1234-123456789012"
 
 
@@ -266,12 +291,12 @@ def test_get_authenticated_user_id_prefers_upn_over_oid(settings_fixture):
         oid="12345678-1234-1234-1234-123456789012",
         tid=settings_fixture.microsoft_tenant_id,
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    user_id = provider.get_authenticated_user_id()
+    user_id = provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
     assert user_id == "user@example.com"
 
 
@@ -281,37 +306,43 @@ def test_get_authenticated_user_id_falls_back_to_unique_name_then_email_then_oid
         oid="12345678-1234-1234-1234-123456789012",
         tid=settings_fixture.microsoft_tenant_id,
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(
             get_token=lambda _: SimpleNamespace(token=token_with_unique_name)
         ),
     )
-    assert provider.get_authenticated_user_id() == "legacy-user@example.com"
+    assert (
+        provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
+        == "legacy-user@example.com"
+    )
 
     token_with_email = _create_jwt_token(
         email="email-user@example.com",
         oid="12345678-1234-1234-1234-123456789012",
         tid=settings_fixture.microsoft_tenant_id,
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(
             get_token=lambda _: SimpleNamespace(token=token_with_email)
         ),
     )
-    assert provider.get_authenticated_user_id() == "email-user@example.com"
+    assert (
+        provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
+        == "email-user@example.com"
+    )
 
 
 def test_get_authenticated_user_id_handles_malformed_token(monkeypatch):
     """Should return 'unknown' for a malformed token."""
     settings = _create_settings_with_tenant(monkeypatch, tenant_id="")
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token="not.a.jwt")),
     )
 
-    user_id = provider.get_authenticated_user_id()
+    user_id = provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
     assert user_id == "unknown"
 
 
@@ -324,12 +355,12 @@ def test_get_authenticated_user_id_handles_invalid_payload_json(monkeypatch):
     signature_b64 = "sig"
     token = f"{header_b64}.{payload_b64}.{signature_b64}"
 
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    user_id = provider.get_authenticated_user_id()
+    user_id = provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
     assert user_id == "unknown"
 
 
@@ -339,7 +370,7 @@ def test_get_authenticated_user_id_falls_back_to_device_code(settings_fixture):
         upn="device-user@example.com",
         tid=settings_fixture.microsoft_tenant_id,
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(
             get_token=lambda _: (_ for _ in ()).throw(ClientAuthenticationError("x"))
@@ -347,7 +378,7 @@ def test_get_authenticated_user_id_falls_back_to_device_code(settings_fixture):
         device_code_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    user_id = provider.get_authenticated_user_id()
+    user_id = provider.get_authenticated_user_id("https://api.fabric.microsoft.com/.default")
     assert user_id == "device-user@example.com"
 
 
@@ -356,23 +387,23 @@ def test_get_authenticated_identity_extracts_user_and_tenant(settings_fixture):
         upn="identity-user@example.com",
         tid="11111111-2222-3333-4444-555555555555",
     )
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    identity = provider.get_authenticated_identity()
+    identity = provider.get_authenticated_identity("https://api.fabric.microsoft.com/.default")
     assert identity.user_id == "identity-user@example.com"
     assert identity.tenant_id == "11111111-2222-3333-4444-555555555555"
 
 
 def test_get_authenticated_identity_handles_missing_claims(settings_fixture):
     token = _create_jwt_token(tid=settings_fixture.microsoft_tenant_id)
-    provider = FabricTokenProvider(
+    provider = TokenProvider(
         settings_fixture,
         default_credential=SimpleNamespace(get_token=lambda _: SimpleNamespace(token=token)),
     )
 
-    identity = provider.get_authenticated_identity()
+    identity = provider.get_authenticated_identity("https://api.fabric.microsoft.com/.default")
     assert identity.user_id == "unknown"
     assert identity.tenant_id == "unknown"
