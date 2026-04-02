@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.25/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.25",
+  "version": "1.0.0",
+  "id": "8fe62b53-ec3c-4331-9072-9f797ee1ceab",
+  "developer": {
+    "name": "Contoso",
+    "websiteUrl": "https://example.azurewebsites.net",
+    "privacyUrl": "https://example.azurewebsites.net/privacy",
+    "termsOfUseUrl": "https://example.azurewebsites.net/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "LangGraph Fabric Agent",
+    "full": "LangGraph Fabric Data Agent"
+  },
+  "description": {
+    "short": "Chat with a LangGraph Fabric Agent through the hosted M365 Agents SDK adapter.",
+    "full": "LangGraph Fabric Data Agent is a hosted bot-based Microsoft 365 agent that routes chat prompts through the M365 Agents SDK adapter to a LangGraph Fabric Data Agent over MCP. Replace the placeholder app ID, domains, and URLs with your deployed values before uploading this package to the Microsoft 365 admin center."
+  },
+  "accentColor": "#0F766E",
+  "copilotAgents": {
+    "customEngineAgents": [
+      {
+        "id": "3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae",
+        "type": "bot"
+      }
+    ]
+  },
+  "bots": [
+    {
+      "botId": "3d79b6ed-2103-4b7e-9214-a4c6b9ad11ae",
+      "scopes": ["copilot", "personal"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": ["copilot", "personal"],
+          "commands": [
+            {
+              "title": "Example 1",
+              "description": "Query the fabric data agent and tell me about who my top 5 customers are by sales"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["example.azurewebsites.net"]
+}

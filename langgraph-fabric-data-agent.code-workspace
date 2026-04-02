@@ -300,7 +300,7 @@
         "type": "shell",
         "command": "mkdir -p appPackage/build && rm -f appPackage/build/langgraph-fabric-data-agent-m365.zip && zip -j appPackage/build/langgraph-fabric-data-agent-m365.zip appPackage/manifest.json appPackage/color.png appPackage/outline.png",
         "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          "cwd": "${workspaceFolder:langgraph-fabric-m365}"
         }
       }
     ],

@@ -27,5 +27,6 @@ uv run langgraph-fabric-api
 > Endpoints are intentionally unauthenticated in this sample. Fabric tool calls always require user authentication.
 
 See the [API guide](../../docs/api-guide.md) for detailed authentication setup and streaming client examples.
+See [examples/README.md](examples/README.md) for runnable notebook and REST Client examples.
 See the [architecture guide](../../docs/architecture.md) for full package details.
 

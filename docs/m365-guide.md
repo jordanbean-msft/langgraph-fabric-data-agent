@@ -85,9 +85,10 @@ The server listens on port `8000` by default. Override it with `PORT=<number>` i
 1. Build the Teams app package:
 
    ```bash
+   cd packages/langgraph-fabric-m365
    cp appPackage/manifest.sample.json appPackage/manifest.json
    # Edit appPackage/manifest.json and replace <YOUR_APP_ID> with MICROSOFT_APP_ID
-   cd appPackage && zip -r ../teams-app-package.zip manifest.json color.png outline.png
+   cd appPackage && zip -r ../../../teams-app-package.zip manifest.json color.png outline.png
    ```
 
 2. In Teams, go to **Apps → Manage your apps → Upload an app → Upload a custom app** and select `teams-app-package.zip`.

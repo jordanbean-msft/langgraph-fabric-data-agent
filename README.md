@@ -113,7 +113,4 @@ uv run pytest
 - Local mode uses `DefaultAzureCredential` with interactive fallback.
 - M365 mode expects Bot Service user tokens from Teams/Copilot Chat.
 - M365 OAuth behavior sends an Adaptive Card sign-in prompt, disables the sign-in action after flow initiation, and supports pasting OAuth magic codes back in chat.
-- M365 runtime state access uses helper functions in [`packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py`](packages/langgraph-fabric-m365/src/langgraph_fabric_m365/oauth.py) instead of direct `TurnState` calls for SDK compatibility.
 - Logging supports a base `LOG_LEVEL` plus optional `LOG_LEVEL_OVERRIDE` values such as `langgraph_fabric_core.graph:DEBUG,azure.core:WARNING`.
-- DEBUG logs can include large configuration payloads from dependencies. Redact secrets before sharing logs outside your machine.
-
