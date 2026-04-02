@@ -48,7 +48,7 @@
       "command": "uv run langgraph-fabric-console"
     },
     {
-      "label": "run-hosted",
+      "label": "run-m365",
       "type": "shell",
       "command": "uv run langgraph-fabric-m365",
       "isBackground": true,
@@ -64,7 +64,7 @@
     {
       "label": "devtunnel-create",
       "type": "shell",
-      "command": "devtunnel create ${input:devTunnelId} --allow-anonymous --expiration ${input:devTunnelExpiration} --description \"langgraph-fabric-data-agent hosted adapter\" --host-header unchanged"
+      "command": "devtunnel create ${input:devTunnelId} --allow-anonymous --expiration ${input:devTunnelExpiration} --description \"langgraph-fabric-data-agent M365 adapter\" --host-header unchanged"
     },
     {
       "label": "devtunnel-show",
@@ -74,7 +74,7 @@
     {
       "label": "devtunnel-port-configure",
       "type": "shell",
-      "command": "devtunnel port delete ${input:devTunnelId} -p ${input:hostedPort} > /dev/null 2>&1 || true; devtunnel port create ${input:devTunnelId} -p ${input:hostedPort} --protocol http --host-header unchanged",
+      "command": "devtunnel port delete ${input:devTunnelId} -p ${input:m365Port} > /dev/null 2>&1 || true; devtunnel port create ${input:devTunnelId} -p ${input:m365Port} --protocol http --host-header unchanged",
       "presentation": {
         "panel": "new"
       }
@@ -90,19 +90,19 @@
       }
     },
     {
-      "label": "run-hosted-and-devtunnel-host",
+      "label": "run-m365-and-devtunnel-host",
       "dependsOrder": "parallel",
       "dependsOn": [
         "devtunnel-host",
-        "run-hosted"
+        "run-m365"
       ]
     },
     {
-      "label": "run-hosted-with-devtunnel",
+      "label": "run-m365-with-devtunnel",
       "dependsOrder": "sequence",
       "dependsOn": [
         "devtunnel-port-configure",
-        "run-hosted-and-devtunnel-host"
+        "run-m365-and-devtunnel-host"
       ]
     },
     {
@@ -119,90 +119,9 @@
       "default": "langgraph-fabric-data-agent-m365"
     },
     {
-      "id": "hostedPort",
+      "id": "m365Port",
       "type": "promptString",
-      "description": "Local port exposed by the hosted adapter",
-      "default": "8000"
-    },
-    {
-      "id": "devTunnelExpiration",
-      "type": "pickString",
-      "description": "How long the dev tunnel should stay alive",
-      "options": [
-        "4h",
-        "1d",
-        "7d"
-      ],
-      "default": "7d"
-    }
-  ]
-}
-    {
-      "label": "devtunnel-login",
-      "type": "shell",
-      "command": "devtunnel user login"
-    },
-    {
-      "label": "devtunnel-create",
-      "type": "shell",
-      "command": "devtunnel create ${input:devTunnelId} --allow-anonymous --expiration ${input:devTunnelExpiration} --description \"langgraph-fabric-data-agent hosted adapter\" --host-header unchanged"
-    },
-    {
-      "label": "devtunnel-show",
-      "type": "shell",
-      "command": "devtunnel show ${input:devTunnelId}"
-    },
-    {
-      "label": "devtunnel-port-configure",
-      "type": "shell",
-      "command": "devtunnel port delete ${input:devTunnelId} -p ${input:hostedPort} > /dev/null 2>&1 || true; devtunnel port create ${input:devTunnelId} -p ${input:hostedPort} --protocol http --host-header unchanged",
-      "presentation": {
-        "panel": "new"
-      }
-    },
-    {
-      "label": "devtunnel-host",
-      "type": "shell",
-      "command": "devtunnel host ${input:devTunnelId}",
-      "isBackground": true,
-      "problemMatcher": [],
-      "presentation": {
-        "panel": "new"
-      }
-    },
-    {
-      "label": "run-hosted-and-devtunnel-host",
-      "dependsOrder": "parallel",
-      "dependsOn": [
-        "devtunnel-host",
-        "run-hosted"
-      ]
-    },
-    {
-      "label": "run-hosted-with-devtunnel",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "devtunnel-port-configure",
-        "run-hosted-and-devtunnel-host"
-      ]
-    },
-    {
-      "label": "build-m365-app-package",
-      "type": "shell",
-      "command": "mkdir -p appPackage/build && rm -f appPackage/build/langgraph-fabric-data-agent-m365.zip && zip -j appPackage/build/langgraph-fabric-data-agent-m365.zip appPackage/manifest.json appPackage/color.png appPackage/outline.png"
-    }
-  ],
-  "inputs": [
-    {
-      "id": "devTunnelId",
-      "type": "promptString",
-      "description": "Dev Tunnel ID to reuse for the M365 Agents SDK endpoint",
-      "default": "langgraph-fabric-data-agent-m365"
-    },
-    {
-      "id": "hostedPort",
-      "type": "promptString",
-      "description": "Local port exposed by the hosted adapter",
+      "description": "Local port exposed by the M365 adapter",
       "default": "8000"
     },
     {

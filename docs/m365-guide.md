@@ -6,7 +6,7 @@ ms.date: 2026-04-01
 
 # Teams and Copilot Chat Guide
 
-The `langgraph-fabric-m365` package is a hosted adapter that bridges the Fabric Data Agent to Microsoft Teams and Microsoft 365 Copilot Chat. It uses the M365 Agents SDK to handle Bot Framework messaging and an Azure Bot Service OAuth connection to authenticate users against Fabric.
+The `langgraph-fabric-m365` package is an M365 adapter that bridges the Fabric Data Agent to Microsoft Teams and Microsoft 365 Copilot Chat. It uses the M365 Agents SDK to handle Bot Framework messaging and an Azure Bot Service OAuth connection to authenticate users against Fabric.
 
 ## Prerequisites
 
@@ -18,7 +18,7 @@ The `langgraph-fabric-m365` package is a hosted adapter that bridges the Fabric 
 
 ## Authentication
 
-Authentication in the hosted adapter is user-delegated and flows through the Azure Bot Service OAuth connection:
+Authentication in the M365 adapter is user-delegated and flows through the Azure Bot Service OAuth connection:
 
 1. A user sends a message in Teams or Copilot Chat.
 2. The adapter attempts to exchange the Bot Service OAuth connection token for a Fabric access token.

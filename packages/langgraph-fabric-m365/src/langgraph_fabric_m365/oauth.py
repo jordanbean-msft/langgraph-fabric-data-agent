@@ -53,7 +53,7 @@ def _state_delete(state: TurnState, key: str) -> None:
 
 
 def _extract_sign_in_link(token_or_sign_in: Any) -> str | None:
-    """Extract a sign-in link from the hosted SDK token/sign-in response shape."""
+    """Extract a sign-in link from the M365 SDK token/sign-in response shape."""
     if token_or_sign_in is None:
         return None
 

@@ -1,12 +1,12 @@
 ---
 title: App Registration
-description: Entra ID app registration reference for the LangGraph Fabric Data Agent hosted adapter
+description: Entra ID app registration reference for the LangGraph Fabric Data Agent M365 adapter
 ms.date: 2026-04-01
 ---
 
 # App Registration
 
-The hosted adapter authenticates via an Entra ID app registration for the bot (for example, an app named `bot-langgraph-fabric-data-agent`).
+The M365 adapter authenticates via an Entra ID app registration for the bot (for example, an app named `bot-langgraph-fabric-data-agent`).
 Use the template below when configuring your own app registration, `.env` file, and Bot Service OAuth connection. Replace the placeholder values with the details from your Entra ID app.
 
 | Property | Value |
