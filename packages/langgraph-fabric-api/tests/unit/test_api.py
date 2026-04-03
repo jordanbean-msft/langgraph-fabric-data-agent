@@ -11,19 +11,29 @@ def test_health_endpoint():
 
 
 def test_chat_stream_missing_auth_header_returns_401():
-    client = TestClient(app, raise_server_exceptions=False)
-    response = client.post("/chat/stream", json={"prompt": "hello"})
-    assert response.status_code == 401
+    from collections.abc import AsyncIterator
 
-
-def test_chat_stream_still_requires_auth_header_in_chat_only_mode(fake_settings):
-    from langgraph_fabric_api.config import get_settings as original_get_settings
     from langgraph_fabric_api.core.dependencies import get_orchestrator
 
-    fake_settings.mcp_servers = []
+    class FakeOrchestrator:
+        async def stream(self, **_kwargs) -> AsyncIterator[str]:
+            yield "response"
 
-    def get_fake_settings():
-        return fake_settings
+    def get_fake_orchestrator() -> FakeOrchestrator:
+        return FakeOrchestrator()
+
+    app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
+
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post("/chat/stream", json={"prompt": "hello"})
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_chat_stream_still_requires_auth_header_in_chat_only_mode():
+    from langgraph_fabric_api.core.dependencies import get_orchestrator
 
     def get_fake_orchestrator():
         from collections.abc import AsyncIterator
@@ -34,7 +44,6 @@ def test_chat_stream_still_requires_auth_header_in_chat_only_mode(fake_settings)
 
         return FakeOrchestrator()
 
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
 
     try:
@@ -65,7 +74,6 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
     """OBO exchange is mocked; endpoint should stream chunks and [DONE]."""
     from collections.abc import AsyncIterator
 
-    from langgraph_fabric_api.config import get_settings as original_get_settings
     from langgraph_fabric_api.core.dependencies import get_orchestrator
 
     class FakeOrchestrator:
@@ -77,11 +85,8 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
     def get_fake_orchestrator() -> FakeOrchestrator:
         return FakeOrchestrator()
 
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     async def fake_obo(_bearer_token: str, _settings, scope: str) -> str:
         assert scope == "https://api.fabric.microsoft.com/.default"
@@ -156,11 +161,7 @@ def test_get_token_obo_missing_tenant_returns_500(fake_settings):
 def test_chat_stream_obo_auth_error_returns_401(monkeypatch, fake_settings):
     """When OBO exchange fails with ClientAuthenticationError, returns HTTP 401."""
     from azure.core.exceptions import ClientAuthenticationError
-    from langgraph_fabric_api.config import get_settings as original_get_settings
     from langgraph_fabric_api.core.dependencies import get_orchestrator
-
-    def get_fake_settings():
-        return fake_settings
 
     def get_fake_orchestrator():
         from collections.abc import AsyncIterator
@@ -171,8 +172,8 @@ def test_chat_stream_obo_auth_error_returns_401(monkeypatch, fake_settings):
 
         return FakeOrchestrator()
 
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     class FakeOnBehalfOfCredential:
         def __init__(self, **_kwargs):

@@ -2,7 +2,6 @@ from collections.abc import AsyncIterator
 
 from fastapi.testclient import TestClient
 from langgraph_fabric_api.app import app
-from langgraph_fabric_api.config import get_settings as original_get_settings
 from langgraph_fabric_api.core.dependencies import get_orchestrator
 
 
@@ -22,12 +21,8 @@ def _get_fake_orchestrator() -> FakeOrchestrator:
 
 
 def test_streaming_endpoint(monkeypatch, fake_settings):
-    # Use FastAPI's dependency_overrides to mock dependencies
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
 
@@ -46,11 +41,7 @@ def test_streaming_endpoint(monkeypatch, fake_settings):
         app.dependency_overrides.clear()
 
 
-def test_streaming_endpoint_no_auth_returns_401(monkeypatch, fake_settings):
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
+def test_streaming_endpoint_no_auth_returns_401():
     app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
 
     try:
@@ -61,13 +52,7 @@ def test_streaming_endpoint_no_auth_returns_401(monkeypatch, fake_settings):
         app.dependency_overrides.clear()
 
 
-def test_streaming_endpoint_chat_only_mode_still_requires_auth(monkeypatch, fake_settings):
-    fake_settings.mcp_servers = []
-
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
+def test_streaming_endpoint_chat_only_mode_still_requires_auth():
     app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
 
     try:
@@ -94,11 +79,8 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
     def get_capturing_orchestrator() -> CapturingOrchestrator:
         return CapturingOrchestrator()
 
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_capturing_orchestrator
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", capturing_obo)
 
@@ -117,13 +99,8 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
         app.dependency_overrides.clear()
 
 
-def test_streaming_endpoint_returns_422_when_prompt_is_missing(monkeypatch, fake_settings):
+def test_streaming_endpoint_returns_422_when_prompt_is_missing(monkeypatch):
     """Integration: ChatRequest rejects requests that omit the required `prompt` field."""
-
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
 
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
@@ -150,11 +127,8 @@ def test_streaming_endpoint_sse_format_includes_data_prefix(monkeypatch, fake_se
     def get_sse_orchestrator() -> SseOrchestrator:
         return SseOrchestrator()
 
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_sse_orchestrator
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
 
@@ -182,11 +156,8 @@ def test_streaming_endpoint_multiline_chunk_is_valid_sse(monkeypatch, fake_setti
     def get_multiline_orchestrator() -> MultilineOrchestrator:
         return MultilineOrchestrator()
 
-    def get_fake_settings():
-        return fake_settings
-
-    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_multiline_orchestrator
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
 
