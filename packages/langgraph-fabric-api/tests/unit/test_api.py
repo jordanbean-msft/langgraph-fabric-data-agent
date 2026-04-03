@@ -46,17 +46,23 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
     """OBO exchange is mocked; endpoint should stream chunks and [DONE]."""
     from collections.abc import AsyncIterator
 
+    from langgraph_fabric_api.config import get_settings as original_get_settings
+    from langgraph_fabric_api.core.dependencies import get_orchestrator
+
     class FakeOrchestrator:
         async def stream(self, **_kwargs) -> AsyncIterator[str]:
             yield "\n[tool] Querying mcp_fabric...\n"
             yield "chunk-1"
             yield "chunk-2"
 
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr(
-        "langgraph_fabric_api.routes.chat.get_orchestrator",
-        lambda: FakeOrchestrator(),
-    )
+    def get_fake_orchestrator() -> FakeOrchestrator:
+        return FakeOrchestrator()
+
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
 
     async def fake_obo(_bearer_token: str, _settings, scope: str) -> str:
         assert scope == "https://api.fabric.microsoft.com/.default"
@@ -64,19 +70,22 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
 
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", fake_obo)
 
-    client = TestClient(app)
-    response = client.post(
-        "/chat/stream",
-        json={"prompt": "hello"},
-        headers={"Authorization": "Bearer fake-caller-token"},
-    )
-    assert response.status_code == 200
-    assert "event: tool_status" in response.text
-    assert "[tool] Querying mcp_fabric..." in response.text
-    assert "event: text" in response.text
-    assert "chunk-1" in response.text
-    assert "chunk-2" in response.text
-    assert "[DONE]" in response.text
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/chat/stream",
+            json={"prompt": "hello"},
+            headers={"Authorization": "Bearer fake-caller-token"},
+        )
+        assert response.status_code == 200
+        assert "event: tool_status" in response.text
+        assert "[tool] Querying mcp_fabric..." in response.text
+        assert "event: text" in response.text
+        assert "chunk-1" in response.text
+        assert "chunk-2" in response.text
+        assert "[DONE]" in response.text
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_get_token_obo_missing_app_id_returns_500(fake_settings):

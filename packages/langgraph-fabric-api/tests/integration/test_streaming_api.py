@@ -2,6 +2,8 @@ from collections.abc import AsyncIterator
 
 from fastapi.testclient import TestClient
 from langgraph_fabric_api.app import app
+from langgraph_fabric_api.config import get_settings as original_get_settings
+from langgraph_fabric_api.core.dependencies import get_orchestrator
 
 
 class FakeOrchestrator:
@@ -20,37 +22,60 @@ def _get_fake_orchestrator() -> FakeOrchestrator:
 
 
 def test_streaming_endpoint(monkeypatch, fake_settings):
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
+    # Use FastAPI's dependency_overrides to mock dependencies
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
+
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
-    client = TestClient(app)
-    response = client.post(
-        "/chat/stream",
-        json={"prompt": "hello"},
-        headers={"Authorization": "Bearer fake-caller-token"},
-    )
-    assert response.status_code == 200
-    assert "chunk-1" in response.text
-    assert "chunk-2" in response.text
-    assert "[DONE]" in response.text
+
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/chat/stream",
+            json={"prompt": "hello"},
+            headers={"Authorization": "Bearer fake-caller-token"},
+        )
+        assert response.status_code == 200
+        assert "chunk-1" in response.text
+        assert "chunk-2" in response.text
+        assert "[DONE]" in response.text
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_streaming_endpoint_no_auth_returns_401(monkeypatch, fake_settings):
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
-    client = TestClient(app, raise_server_exceptions=False)
-    response = client.post("/chat/stream", json={"prompt": "hello"})
-    assert response.status_code == 401
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
+
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post("/chat/stream", json={"prompt": "hello"})
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_streaming_endpoint_chat_only_mode_still_requires_auth(monkeypatch, fake_settings):
     fake_settings.mcp_servers = []
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
-    client = TestClient(app, raise_server_exceptions=False)
-    response = client.post("/chat/stream", json={"prompt": "hello"})
-    assert response.status_code == 401
+
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
+
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post("/chat/stream", json={"prompt": "hello"})
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_settings):
@@ -69,35 +94,50 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
     def get_capturing_orchestrator() -> CapturingOrchestrator:
         return CapturingOrchestrator()
 
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr(
-        "langgraph_fabric_api.routes.chat.get_orchestrator", get_capturing_orchestrator
-    )
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", capturing_obo)
-    client = TestClient(app)
-    client.post(
-        "/chat/stream",
-        json={"prompt": "query"},
-        headers={"Authorization": "Bearer fake-caller-token"},
-    )
+    def get_fake_settings():
+        return fake_settings
 
-    assert captured.get("mcp_user_tokens") == {"fabric": "obo-fabric-token"}
-    assert captured.get("auth_mode") == "api"
-    assert captured.get("channel") == "api"
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = get_capturing_orchestrator
+
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", capturing_obo)
+
+    try:
+        client = TestClient(app)
+        client.post(
+            "/chat/stream",
+            json={"prompt": "query"},
+            headers={"Authorization": "Bearer fake-caller-token"},
+        )
+
+        assert captured.get("mcp_user_tokens") == {"fabric": "obo-fabric-token"}
+        assert captured.get("auth_mode") == "api"
+        assert captured.get("channel") == "api"
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_streaming_endpoint_returns_422_when_prompt_is_missing(monkeypatch, fake_settings):
     """Integration: ChatRequest rejects requests that omit the required `prompt` field."""
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
+
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = _get_fake_orchestrator
+
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
-    client = TestClient(app)
-    response = client.post(
-        "/chat/stream",
-        json={},
-        headers={"Authorization": "Bearer fake-caller-token"},
-    )
-    assert response.status_code == 422
+
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/chat/stream",
+            json={},
+            headers={"Authorization": "Bearer fake-caller-token"},
+        )
+        assert response.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_streaming_endpoint_sse_format_includes_data_prefix(monkeypatch, fake_settings):
@@ -110,18 +150,26 @@ def test_streaming_endpoint_sse_format_includes_data_prefix(monkeypatch, fake_se
     def get_sse_orchestrator() -> SseOrchestrator:
         return SseOrchestrator()
 
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", get_sse_orchestrator)
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
-    client = TestClient(app)
-    response = client.post(
-        "/chat/stream",
-        json={"prompt": "p"},
-        headers={"Authorization": "Bearer fake-caller-token"},
-    )
+    def get_fake_settings():
+        return fake_settings
 
-    assert "data: test chunk" in response.text
-    assert "event: done" in response.text
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = get_sse_orchestrator
+
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
+
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/chat/stream",
+            json={"prompt": "p"},
+            headers={"Authorization": "Bearer fake-caller-token"},
+        )
+
+        assert "data: test chunk" in response.text
+        assert "event: done" in response.text
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_streaming_endpoint_multiline_chunk_is_valid_sse(monkeypatch, fake_settings):
@@ -134,17 +182,23 @@ def test_streaming_endpoint_multiline_chunk_is_valid_sse(monkeypatch, fake_setti
     def get_multiline_orchestrator() -> MultilineOrchestrator:
         return MultilineOrchestrator()
 
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
-    monkeypatch.setattr(
-        "langgraph_fabric_api.routes.chat.get_orchestrator", get_multiline_orchestrator
-    )
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
-    client = TestClient(app)
-    response = client.post(
-        "/chat/stream",
-        json={"prompt": "p"},
-        headers={"Authorization": "Bearer fake-caller-token"},
-    )
+    def get_fake_settings():
+        return fake_settings
 
-    assert response.status_code == 200
-    assert "event: text\ndata: line-1\ndata: line-2\n" in response.text
+    app.dependency_overrides[original_get_settings] = get_fake_settings
+    app.dependency_overrides[get_orchestrator] = get_multiline_orchestrator
+
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
+
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/chat/stream",
+            json={"prompt": "p"},
+            headers={"Authorization": "Bearer fake-caller-token"},
+        )
+
+        assert response.status_code == 200
+        assert "event: text\ndata: line-1\ndata: line-2\n" in response.text
+    finally:
+        app.dependency_overrides.clear()
