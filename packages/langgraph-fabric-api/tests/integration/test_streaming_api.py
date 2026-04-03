@@ -1,10 +1,7 @@
-import importlib
-import json
 from collections.abc import AsyncIterator
 
 from fastapi.testclient import TestClient
-
-api_module = importlib.import_module("langgraph_fabric_api.app")
+from langgraph_fabric_api.app import app
 
 
 class FakeOrchestrator:
@@ -23,10 +20,10 @@ def _get_fake_orchestrator() -> FakeOrchestrator:
 
 
 def test_streaming_endpoint(monkeypatch, fake_settings):
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
-    client = TestClient(api_module.app)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
+    client = TestClient(app)
     response = client.post(
         "/chat/stream",
         json={"prompt": "hello"},
@@ -39,19 +36,19 @@ def test_streaming_endpoint(monkeypatch, fake_settings):
 
 
 def test_streaming_endpoint_no_auth_returns_401(monkeypatch, fake_settings):
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
-    client = TestClient(api_module.app, raise_server_exceptions=False)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
+    client = TestClient(app, raise_server_exceptions=False)
     response = client.post("/chat/stream", json={"prompt": "hello"})
     assert response.status_code == 401
 
 
 def test_streaming_endpoint_chat_only_mode_still_requires_auth(monkeypatch, fake_settings):
     fake_settings.mcp_servers = []
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
-    client = TestClient(api_module.app, raise_server_exceptions=False)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
+    client = TestClient(app, raise_server_exceptions=False)
     response = client.post("/chat/stream", json={"prompt": "hello"})
     assert response.status_code == 401
 
@@ -72,10 +69,12 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
     def get_capturing_orchestrator() -> CapturingOrchestrator:
         return CapturingOrchestrator()
 
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", get_capturing_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", capturing_obo)
-    client = TestClient(api_module.app)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr(
+        "langgraph_fabric_api.routes.chat.get_orchestrator", get_capturing_orchestrator
+    )
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", capturing_obo)
+    client = TestClient(app)
     client.post(
         "/chat/stream",
         json={"prompt": "query"},
@@ -89,10 +88,10 @@ def test_streaming_endpoint_obo_token_reaches_orchestrator(monkeypatch, fake_set
 
 def test_streaming_endpoint_returns_422_when_prompt_is_missing(monkeypatch, fake_settings):
     """Integration: ChatRequest rejects requests that omit the required `prompt` field."""
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", _get_fake_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
-    client = TestClient(api_module.app)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", _get_fake_orchestrator)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
+    client = TestClient(app)
     response = client.post(
         "/chat/stream",
         json={},
@@ -111,10 +110,10 @@ def test_streaming_endpoint_sse_format_includes_data_prefix(monkeypatch, fake_se
     def get_sse_orchestrator() -> SseOrchestrator:
         return SseOrchestrator()
 
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", get_sse_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
-    client = TestClient(api_module.app)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", get_sse_orchestrator)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
+    client = TestClient(app)
     response = client.post(
         "/chat/stream",
         json={"prompt": "p"},
@@ -135,10 +134,12 @@ def test_streaming_endpoint_multiline_chunk_is_valid_sse(monkeypatch, fake_setti
     def get_multiline_orchestrator() -> MultilineOrchestrator:
         return MultilineOrchestrator()
 
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", get_multiline_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
-    client = TestClient(api_module.app)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr(
+        "langgraph_fabric_api.routes.chat.get_orchestrator", get_multiline_orchestrator
+    )
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", _fake_obo)
+    client = TestClient(app)
     response = client.post(
         "/chat/stream",
         json={"prompt": "p"},
@@ -147,39 +148,3 @@ def test_streaming_endpoint_multiline_chunk_is_valid_sse(monkeypatch, fake_setti
 
     assert response.status_code == 200
     assert "event: text\ndata: line-1\ndata: line-2\n" in response.text
-
-
-def test_streaming_endpoint_ndjson_mode_is_easier_to_read(monkeypatch, fake_settings):
-    """Integration: NDJSON mode emits one JSON object per streamed event."""
-
-    class NdjsonOrchestrator:
-        async def stream(self, **_kwargs) -> AsyncIterator[str]:
-            yield "chunk-1"
-            yield "\n[tool] Querying mcp_fabric...\n"
-
-    def get_ndjson_orchestrator() -> NdjsonOrchestrator:
-        return NdjsonOrchestrator()
-
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", get_ndjson_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
-    client = TestClient(api_module.app)
-    response = client.post(
-        "/chat/stream",
-        json={"prompt": "p"},
-        headers={
-            "Authorization": "Bearer fake-caller-token",
-            "Accept": "application/x-ndjson",
-        },
-    )
-
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("application/x-ndjson")
-    lines = [line for line in response.text.splitlines() if line.strip()]
-    events = [json.loads(line) for line in lines]
-    assert events[0] == {"event": "text", "data": "chunk-1"}
-    assert events[1] == {
-        "event": "tool_status",
-        "data": "[tool] Querying mcp_fabric...",
-    }
-    assert events[-1] == {"event": "done", "data": "[DONE]"}

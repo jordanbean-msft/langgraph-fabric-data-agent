@@ -1,9 +1,6 @@
-import importlib
-
 from fastapi.testclient import TestClient
-from langgraph_fabric_api.app import _extract_user_id, app
-
-api_module = importlib.import_module("langgraph_fabric_api.app")
+from langgraph_fabric_api.app import app
+from langgraph_fabric_api.core.auth import extract_user_id, get_token_obo
 
 
 def test_health_endpoint():
@@ -21,9 +18,9 @@ def test_chat_stream_missing_auth_header_returns_401():
 
 def test_chat_stream_still_requires_auth_header_in_chat_only_mode(monkeypatch, fake_settings):
     fake_settings.mcp_servers = []
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
-    client = TestClient(api_module.app, raise_server_exceptions=False)
+    client = TestClient(app, raise_server_exceptions=False)
     response = client.post("/chat/stream", json={"prompt": "hello"})
 
     assert response.status_code == 401
@@ -32,17 +29,17 @@ def test_chat_stream_still_requires_auth_header_in_chat_only_mode(monkeypatch, f
 def test_extract_user_id_preferred_username():
     # JWT payload: {"preferred_username": "alice@example.com", "sub": "abc123"}
     token = "header.eyJwcmVmZXJyZWRfdXNlcm5hbWUiOiAiYWxpY2VAZXhhbXBsZS5jb20iLCAic3ViIjogImFiYzEyMyJ9.sig"
-    assert _extract_user_id(token) == "alice@example.com"
+    assert extract_user_id(token) == "alice@example.com"
 
 
 def test_extract_user_id_falls_back_to_sub():
     # JWT payload: {"sub": "abc123"}
     token = "header.eyJzdWIiOiAiYWJjMTIzIn0.sig"
-    assert _extract_user_id(token) == "abc123"
+    assert extract_user_id(token) == "abc123"
 
 
 def test_extract_user_id_invalid_token():
-    assert _extract_user_id("not-a-jwt") == "unknown"
+    assert extract_user_id("not-a-jwt") == "unknown"
 
 
 def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
@@ -55,18 +52,19 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
             yield "chunk-1"
             yield "chunk-2"
 
-    def fake_get_orchestrator():
-        return FakeOrchestrator()
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr(
+        "langgraph_fabric_api.routes.chat.get_orchestrator",
+        lambda: FakeOrchestrator(),
+    )
 
     async def fake_obo(_bearer_token: str, _settings, scope: str) -> str:
         assert scope == "https://api.fabric.microsoft.com/.default"
         return "fake-fabric-token"
 
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", fake_get_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", fake_obo)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", fake_obo)
 
-    client = TestClient(api_module.app)
+    client = TestClient(app)
     response = client.post(
         "/chat/stream",
         json={"prompt": "hello"},
@@ -84,7 +82,6 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
 def test_get_token_obo_missing_app_id_returns_500(fake_settings):
     """When MICROSOFT_APP_ID is missing, OBO should raise HTTP 500."""
     import pytest
-    from langgraph_fabric_api.app import _get_token_obo
 
     fake_settings.microsoft_app_id = ""
     fake_settings.microsoft_app_password = "secret"
@@ -94,14 +91,13 @@ def test_get_token_obo_missing_app_id_returns_500(fake_settings):
         # Note: sync wrapper for async test
         import asyncio
 
-        asyncio.run(_get_token_obo("bearer", fake_settings, "scope"))
+        asyncio.run(get_token_obo("bearer", fake_settings, "scope"))
     assert "500" in str(exc_info.value) or "not configured" in str(exc_info.value).lower()
 
 
 def test_get_token_obo_missing_password_returns_500(fake_settings):
     """When MICROSOFT_APP_PASSWORD is missing, OBO should raise HTTP 500."""
     import pytest
-    from langgraph_fabric_api.app import _get_token_obo
 
     fake_settings.microsoft_app_id = "app-id"
     fake_settings.microsoft_app_password = ""
@@ -110,14 +106,13 @@ def test_get_token_obo_missing_password_returns_500(fake_settings):
     with pytest.raises(Exception) as exc_info:
         import asyncio
 
-        asyncio.run(_get_token_obo("bearer", fake_settings, "scope"))
+        asyncio.run(get_token_obo("bearer", fake_settings, "scope"))
     assert "500" in str(exc_info.value) or "not configured" in str(exc_info.value).lower()
 
 
 def test_get_token_obo_missing_tenant_returns_500(fake_settings):
     """When MICROSOFT_TENANT_ID is missing, OBO should raise HTTP 500."""
     import pytest
-    from langgraph_fabric_api.app import _get_token_obo
 
     fake_settings.microsoft_app_id = "app-id"
     fake_settings.microsoft_app_password = "secret"
@@ -126,7 +121,7 @@ def test_get_token_obo_missing_tenant_returns_500(fake_settings):
     with pytest.raises(Exception) as exc_info:
         import asyncio
 
-        asyncio.run(_get_token_obo("bearer", fake_settings, "scope"))
+        asyncio.run(get_token_obo("bearer", fake_settings, "scope"))
     assert "500" in str(exc_info.value) or "not configured" in str(exc_info.value).lower()
 
 
@@ -134,7 +129,7 @@ def test_chat_stream_obo_auth_error_returns_401(monkeypatch, fake_settings):
     """When OBO exchange fails with ClientAuthenticationError, returns HTTP 401."""
     from azure.core.exceptions import ClientAuthenticationError
 
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     class FakeOnBehalfOfCredential:
         def __init__(self, **_kwargs):
@@ -149,9 +144,12 @@ def test_chat_stream_obo_auth_error_returns_401(monkeypatch, fake_settings):
         async def get_token(self, _scope: str):
             raise ClientAuthenticationError("Invalid token")
 
-    monkeypatch.setattr(api_module, "OnBehalfOfCredential", FakeOnBehalfOfCredential)
+    monkeypatch.setattr(
+        "langgraph_fabric_api.core.auth.OnBehalfOfCredential",
+        FakeOnBehalfOfCredential,
+    )
 
-    client = TestClient(api_module.app, raise_server_exceptions=False)
+    client = TestClient(app, raise_server_exceptions=False)
     response = client.post(
         "/chat/stream",
         json={"prompt": "hello"},
@@ -205,11 +203,11 @@ def test_chat_stream_token_deduplication_by_scope(monkeypatch, fake_settings):
     def get_orchestrator():
         return FakeOrchestrator()
 
-    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
-    monkeypatch.setattr(api_module, "get_orchestrator", get_orchestrator)
-    monkeypatch.setattr(api_module, "_get_token_obo", counting_obo)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_orchestrator", get_orchestrator)
+    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", counting_obo)
 
-    client = TestClient(api_module.app)
+    client = TestClient(app)
     client.post(
         "/chat/stream",
         json={"prompt": "hello"},
