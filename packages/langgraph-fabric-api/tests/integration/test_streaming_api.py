@@ -1,4 +1,5 @@
 import importlib
+import json
 from collections.abc import AsyncIterator
 
 from fastapi.testclient import TestClient
@@ -146,3 +147,39 @@ def test_streaming_endpoint_multiline_chunk_is_valid_sse(monkeypatch, fake_setti
 
     assert response.status_code == 200
     assert "event: text\ndata: line-1\ndata: line-2\n" in response.text
+
+
+def test_streaming_endpoint_ndjson_mode_is_easier_to_read(monkeypatch, fake_settings):
+    """Integration: NDJSON mode emits one JSON object per streamed event."""
+
+    class NdjsonOrchestrator:
+        async def stream(self, **_kwargs) -> AsyncIterator[str]:
+            yield "chunk-1"
+            yield "\n[tool] Querying mcp_fabric...\n"
+
+    def get_ndjson_orchestrator() -> NdjsonOrchestrator:
+        return NdjsonOrchestrator()
+
+    monkeypatch.setattr(api_module, "get_settings", lambda: fake_settings)
+    monkeypatch.setattr(api_module, "get_orchestrator", get_ndjson_orchestrator)
+    monkeypatch.setattr(api_module, "_get_token_obo", _fake_obo)
+    client = TestClient(api_module.app)
+    response = client.post(
+        "/chat/stream",
+        json={"prompt": "p"},
+        headers={
+            "Authorization": "Bearer fake-caller-token",
+            "Accept": "application/x-ndjson",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/x-ndjson")
+    lines = [line for line in response.text.splitlines() if line.strip()]
+    events = [json.loads(line) for line in lines]
+    assert events[0] == {"event": "text", "data": "chunk-1"}
+    assert events[1] == {
+        "event": "tool_status",
+        "data": "[tool] Querying mcp_fabric...",
+    }
+    assert events[-1] == {"event": "done", "data": "[DONE]"}

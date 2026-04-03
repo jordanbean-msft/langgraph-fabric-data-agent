@@ -32,6 +32,18 @@ def _format_sse_event(event: str, data: str) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
+def _format_ndjson_event(event: str, data: str) -> bytes:
+    """Format a stream event as a single NDJSON object."""
+    payload = {"event": event, "data": data}
+    return (json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def _prefers_ndjson(request: Request) -> bool:
+    """Return True when the caller explicitly requests NDJSON streaming."""
+    accept = request.headers.get("accept", "")
+    return "application/x-ndjson" in accept.lower()
+
+
 def _extract_bearer_token(request: Request) -> str:
     """Extract Bearer token from Authorization header.
 
@@ -142,6 +154,7 @@ async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResp
         mcp_user_tokens[server.name] = tokens_by_scope[server.scope]
 
     user_id = _extract_user_id(bearer_token)
+    use_ndjson = _prefers_ndjson(http_request)
 
     orchestrator = get_orchestrator()
 
@@ -153,10 +166,12 @@ async def chat_stream(http_request: Request, body: ChatRequest) -> StreamingResp
             user_id=user_id,
             mcp_user_tokens=mcp_user_tokens,
         ):
+            formatter = _format_ndjson_event if use_ndjson else _format_sse_event
             if chunk.startswith("\n[tool]"):
-                yield _format_sse_event("tool_status", chunk.strip())
+                yield formatter("tool_status", chunk.strip())
             else:
-                yield _format_sse_event("text", chunk)
-        yield _format_sse_event("done", "[DONE]")
+                yield formatter("text", chunk)
+        yield formatter("done", "[DONE]")
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    media_type = "application/x-ndjson" if use_ndjson else "text/event-stream"
+    return StreamingResponse(event_stream(), media_type=media_type)

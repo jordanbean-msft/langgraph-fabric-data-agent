@@ -43,33 +43,32 @@
 # Opens browser for user sign-in, returns authorization code
 ###############################################################################
 
-# REST Client cannot perform interactive browser sign-in — it will return raw
-# HTML when you send this request. Use it as a URL template only.
+# REST Client cannot perform interactive browser sign-in.
 #
-# Substitute your values and paste the URL into your browser:
+# STEP 1: Copy the URL template below, substitute configured values,
+# and paste into your browser:
 #
-#   https://login.microsoftonline.com/<TENANT_ID>/oauth2/v2.0/authorize
-#     ?client_id=<CALLER_CLIENT_ID>
+#   {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/authorize
+#     ?client_id={{callerClientId}}
 #     &response_type=code
-#     &scope=<API_SCOPE>         (URL-encode colons/slashes, e.g. api%3A%2F%2F...)
-#     &redirect_uri=http://localhost:3000/callback
-#     &code_challenge=<code_challenge>
+#     &scope={{apiScope}}
+#     &redirect_uri={{redirectUri}}
+#     &code_challenge={{codeChallenge}}
 #     &code_challenge_method=S256
 #     &prompt=select_account
 #
-# After sign-in, your browser redirects to http://localhost:3000/callback?code=<AUTH_CODE>
-# The page will show "unable to connect" — that is expected. Copy the code from the URL.
-
-GET {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/authorize?client_id={{callerClientId}}&response_type=code&scope={{apiScope}}&redirect_uri={{redirectUri}}&code_challenge={{codeChallenge}}&code_challenge_method=S256&prompt=select_account
-
-###
-# NEXT STEPS:
-# 1. Construct the URL above with your values and open it in your browser
-# 2. Sign in with your Microsoft account
-# 3. You'll be redirected to http://localhost:3000/callback?code=<AUTH_CODE>
-# 4. Copy the authorization code from the URL
-# 5. Paste it as @authorizationCode below
-# 6. Run REQUEST 2
+#   URL-encode the scope value if needed (for example api%3A%2F%2F...).
+#
+# STEP 2: Sign in with your Microsoft account.
+#
+# STEP 3: After sign-in your browser redirects to:
+#   {{redirectUri}}?code=<AUTH_CODE>&...
+#   The page may show "unable to connect". That is expected.
+#   Copy the "code" query parameter value from the URL bar.
+#
+# STEP 4: Paste the code as @authorizationCode below and run REQUEST 2.
+#   Important: if you change @codeVerifier or @codeChallenge, request a new
+#   authorization code. Old codes are bound to the original PKCE pair.
 
 ###############################################################################
 # REQUEST 2: Token exchange
@@ -108,7 +107,9 @@ grant_type=authorization_code&client_id={{callerClientId}}&code={{authorizationC
 POST {{apiBaseUrl}}/chat/stream
 Authorization: Bearer {{apiAccessToken}}
 Content-Type: application/json
-Accept: text/event-stream
+# Use NDJSON for easier reading in VS Code .http responses.
+# SSE remains available with: Accept: text/event-stream
+Accept: application/x-ndjson
 
 {
   "prompt": "Summarize yesterday's sales by region"
