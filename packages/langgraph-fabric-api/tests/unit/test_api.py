@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from langgraph_fabric_api.app import app
+from langgraph_fabric_api.config import get_settings as original_get_settings
 from langgraph_fabric_api.core.auth import extract_user_id, get_token_obo
 
 
@@ -12,6 +13,7 @@ def test_health_endpoint():
 
 def test_chat_stream_missing_auth_header_returns_401():
     from collections.abc import AsyncIterator
+    from types import SimpleNamespace
 
     from langgraph_fabric_api.core.dependencies import get_orchestrator
 
@@ -22,6 +24,10 @@ def test_chat_stream_missing_auth_header_returns_401():
     def get_fake_orchestrator() -> FakeOrchestrator:
         return FakeOrchestrator()
 
+    def get_fake_settings():
+        return SimpleNamespace(mcp_servers=[])
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
 
     try:
@@ -33,6 +39,8 @@ def test_chat_stream_missing_auth_header_returns_401():
 
 
 def test_chat_stream_still_requires_auth_header_in_chat_only_mode():
+    from types import SimpleNamespace
+
     from langgraph_fabric_api.core.dependencies import get_orchestrator
 
     def get_fake_orchestrator():
@@ -44,6 +52,10 @@ def test_chat_stream_still_requires_auth_header_in_chat_only_mode():
 
         return FakeOrchestrator()
 
+    def get_fake_settings():
+        return SimpleNamespace(mcp_servers=[])
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
 
     try:
@@ -85,8 +97,11 @@ def test_chat_stream_streams_with_mocked_obo(monkeypatch, fake_settings):
     def get_fake_orchestrator() -> FakeOrchestrator:
         return FakeOrchestrator()
 
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     async def fake_obo(_bearer_token: str, _settings, scope: str) -> str:
         assert scope == "https://api.fabric.microsoft.com/.default"
@@ -172,8 +187,11 @@ def test_chat_stream_obo_auth_error_returns_401(monkeypatch, fake_settings):
 
         return FakeOrchestrator()
 
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_fake_orchestrator
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
 
     class FakeOnBehalfOfCredential:
         def __init__(self, **_kwargs):
@@ -253,8 +271,11 @@ def test_chat_stream_token_deduplication_by_scope(monkeypatch, fake_settings):
     def get_capturing_orchestrator():
         return FakeOrchestrator()
 
+    def get_fake_settings():
+        return fake_settings
+
+    app.dependency_overrides[original_get_settings] = get_fake_settings
     app.dependency_overrides[get_orchestrator] = get_capturing_orchestrator
-    monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_settings", lambda: fake_settings)
     monkeypatch.setattr("langgraph_fabric_api.routes.chat.get_token_obo", counting_obo)
 
     try:

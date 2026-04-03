@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from starlette.responses import StreamingResponse
 
-from langgraph_fabric_api.config import get_settings
+from langgraph_fabric_api.config import ApiSettings, get_settings
 from langgraph_fabric_api.core.auth import extract_bearer_token, extract_user_id, get_token_obo
 from langgraph_fabric_api.core.dependencies import get_orchestrator
 from langgraph_fabric_api.core.formatting import format_ndjson_event, format_sse_event
@@ -33,6 +33,7 @@ def _prefers_ndjson(request: Request) -> bool:
 async def chat_stream(
     http_request: Request,
     body: ChatRequest,
+    settings: Annotated[ApiSettings, Depends(get_settings)],
     orchestrator: Annotated[AgentOrchestrator, Depends(get_orchestrator)],
 ) -> StreamingResponse:
     """Stream chat responses using LangGraph orchestrator.
@@ -43,6 +44,7 @@ async def chat_stream(
     Args:
         http_request: The HTTP request object.
         body: The chat request payload.
+        settings: The API settings dependency.
         orchestrator: The AgentOrchestrator dependency.
 
     Returns:
@@ -52,7 +54,6 @@ async def chat_stream(
         HTTPException: If authorization header is missing (401) or OBO exchange fails.
     """
     bearer_token = extract_bearer_token(http_request.headers.get("Authorization", ""))
-    settings = get_settings()
     mcp_user_tokens: dict[str, str] = {}
     tokens_by_scope: dict[str, str] = {}
     for server in settings.mcp_servers:
