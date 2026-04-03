@@ -4,6 +4,7 @@
     "ms-python.debugpy",
     "ms-python.vscode-pylance",
     "charliermarsh.ruff",
-    "humao.rest-client"
+    "humao.rest-client""ms-toolsai.jupyter",
+    "ryanluker.vscode-coverage-gutters"
   ]
 }

@@ -1,12 +1,10 @@
 ---
 title: VS Code Tasks
 description: VS Code task reference for the LangGraph Fabric Data Agent sample
-ms.date: 2026-04-01
+ms.date: 2026-04-03
 ---
 
-# VS Code Tasks
-
-This repository includes workspace tasks in [.vscode/tasks.json](../.vscode/tasks.json) so you can run the common development and M365 adapter flows directly from VS Code.
+This repository includes workspace tasks in [langgraph-fabric-data-agent.code-workspace](../langgraph-fabric-data-agent.code-workspace) so you can run the common development and M365 adapter flows directly from VS Code.
 
 Open the task picker with **Terminal: Run Task** in VS Code, then choose one of these tasks:
 
@@ -19,6 +17,13 @@ Open the task picker with **Terminal: Run Task** in VS Code, then choose one of 
 | `test-console` | Run the `langgraph-fabric-console` test suite with verbose output. |
 | `test-m365` | Run the `langgraph-fabric-m365` test suite with verbose output. |
 | `test-all` | Run the full test suite across all packages. |
+| `test-all-strict` | Run the full test suite with warnings treated as errors, matching the pre-push hook. |
+| `coverage` | Run the full test suite with coverage and write `coverage.xml` for editor tooling. |
+| `coverage-core` | Run only the core package tests with coverage and write `coverage-core.xml`. |
+| `coverage-api` | Run only the API package tests with coverage and write `coverage-api.xml`. |
+| `coverage-console` | Run only the console package tests with coverage and write `coverage-console.xml`. |
+| `coverage-m365` | Run only the M365 package tests with coverage and write `coverage-m365.xml`. |
+| `validate` | Run `lint` and then `test-all-strict` as a single validation flow. |
 | `run-api` | Start the FastAPI surface on the configured port as a background task. |
 | `run-console` | Start the interactive console surface. |
 | `run-m365` | Start the M365 adapter as a background task in a new terminal panel. |
@@ -52,8 +57,23 @@ For a normal first-time local setup in VS Code:
 uv run pre-commit install --hook-type pre-commit --hook-type pre-push
 ```
 
-3. Run `lint` and `test-all` (or individual package tasks such as `test-core`, `test-api`).
+3. Run `validate` for the standard pre-PR check, or run `lint` and `test-all` separately if you want a faster loop.
 4. Run `run-console`, `run-api`, or `run-m365` depending on the surface you want to test.
+
+## Recommended extensions
+
+The workspace recommends these extensions:
+
+* Python, Debugpy, Pylance, and Ruff for editing, linting, and debugging.
+* REST Client for running the sample `.http` requests in `packages/langgraph-fabric-api/examples/`.
+* Jupyter for the API notebook example.
+* Coverage Gutters for loading `coverage.xml` after you run the `coverage` task.
+
+After you run `coverage`, use Coverage Gutters to display line coverage from `coverage.xml` in the editor. The workspace settings also register `coverage-core.xml`, `coverage-api.xml`, `coverage-console.xml`, and `coverage-m365.xml`, so you can run a focused coverage task and then refresh Coverage Gutters without renaming files.
+
+If you want coverage from a specific package, run the matching coverage task or debug launch and then use the Coverage Gutters refresh command from the Command Palette. The extension will pick up whichever registered coverage file you generated most recently.
+
+The launch picker also includes per-package coverage entries, which mirror the focused coverage tasks and make it easy to debug a package test run while collecting coverage.
 
 > [!IMPORTANT]
 > The hook configuration lives in `.pre-commit-config.yaml`, but Git does not activate hooks automatically for a fresh clone. You must run `uv run pre-commit install --hook-type pre-commit --hook-type pre-push` once per local clone.
@@ -67,3 +87,5 @@ For Microsoft 365 testing with a dev tunnel:
 
 > [!NOTE]
 > `run-api`, `run-m365`, and `devtunnel-host` are background tasks. Stop them from the VS Code terminal panel when you are finished.
+
+The `run-api` task marks itself ready when Uvicorn reports that it is serving HTTP traffic. The `run-m365` task marks itself ready when aiohttp prints its `Running on` banner.

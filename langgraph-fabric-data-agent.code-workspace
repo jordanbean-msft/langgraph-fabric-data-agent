@@ -28,6 +28,15 @@
       "packages/langgraph-fabric-console/src",
       "packages/langgraph-fabric-m365/src"
     ],
+    "python.defaultInterpreterPath": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+    "coverage-gutters.coverageFileNames": [
+      "coverage.xml",
+      "coverage-core.xml",
+      "coverage-api.xml",
+      "coverage-console.xml",
+      "coverage-m365.xml"
+    ],
+    "coverage-gutters.showLineCoverage": true,
     "[python]": {
       "editor.defaultFormatter": "charliermarsh.ruff",
       "editor.formatOnSave": true
@@ -37,7 +46,11 @@
     "recommendations": [
       "ms-python.python",
       "ms-python.debugpy",
-      "charliermarsh.ruff"
+      "ms-python.vscode-pylance",
+      "charliermarsh.ruff",
+      "humao.rest-client",
+      "ms-toolsai.jupyter",
+      "ryanluker.vscode-coverage-gutters"
     ]
   },
   "launch": {
@@ -140,6 +153,88 @@
         "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
         "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
         "justMyCode": false
+      },
+      {
+        "name": "Tests: all (coverage)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "-v",
+          "--cov=packages",
+          "--cov-report=term-missing",
+          "--cov-report=xml:coverage.xml"
+        ],
+        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+        "justMyCode": false
+      },
+      {
+        "name": "Tests: core (coverage)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "packages/langgraph-fabric-core/tests",
+          "-v",
+          "--cov=packages/langgraph-fabric-core/src/langgraph_fabric_core",
+          "--cov-report=term-missing",
+          "--cov-report=xml:coverage-core.xml"
+        ],
+        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+        "justMyCode": false
+      },
+      {
+        "name": "Tests: api (coverage)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "packages/langgraph-fabric-api/tests",
+          "-v",
+          "--cov=packages/langgraph-fabric-api/src/langgraph_fabric_api",
+          "--cov-report=term-missing",
+          "--cov-report=xml:coverage-api.xml"
+        ],
+        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+        "envFile": "${workspaceFolder:langgraph-fabric-api}/.env",
+        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+        "justMyCode": false
+      },
+      {
+        "name": "Tests: console (coverage)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "packages/langgraph-fabric-console/tests",
+          "-v",
+          "--cov=packages/langgraph-fabric-console/src/langgraph_fabric_console",
+          "--cov-report=term-missing",
+          "--cov-report=xml:coverage-console.xml"
+        ],
+        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+        "envFile": "${workspaceFolder:langgraph-fabric-console}/.env",
+        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+        "justMyCode": false
+      },
+      {
+        "name": "Tests: m365 (coverage)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "packages/langgraph-fabric-m365/tests",
+          "-v",
+          "--cov=packages/langgraph-fabric-m365/src/langgraph_fabric_m365",
+          "--cov-report=term-missing",
+          "--cov-report=xml:coverage-m365.xml"
+        ],
+        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+        "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
+        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+        "justMyCode": false
       }
     ]
   },
@@ -165,7 +260,7 @@
       {
         "label": "test-core",
         "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-core/tests -v",
+        "command": "uv run pytest packages/langgraph-fabric-core/tests -v --tb=short",
         "options": {
           "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
         }
@@ -173,7 +268,7 @@
       {
         "label": "test-api",
         "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-api/tests -v",
+        "command": "uv run pytest packages/langgraph-fabric-api/tests -v --tb=short",
         "options": {
           "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
         }
@@ -181,7 +276,7 @@
       {
         "label": "test-console",
         "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-console/tests -v",
+        "command": "uv run pytest packages/langgraph-fabric-console/tests -v --tb=short",
         "options": {
           "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
         }
@@ -189,7 +284,7 @@
       {
         "label": "test-m365",
         "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-m365/tests -v",
+        "command": "uv run pytest packages/langgraph-fabric-m365/tests -v --tb=short",
         "options": {
           "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
         }
@@ -197,16 +292,85 @@
       {
         "label": "test-all",
         "type": "shell",
-        "command": "uv run pytest",
+        "command": "uv run pytest -v --tb=short",
         "options": {
           "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
         }
+      },
+      {
+        "label": "test-all-strict",
+        "type": "shell",
+        "command": "uv run pytest -v --tb=short -W error -W ignore:Exception\\ ignored\\ in:pytest.PytestUnraisableExceptionWarning",
+        "options": {
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+        }
+      },
+      {
+        "label": "coverage",
+        "type": "shell",
+        "command": "uv run pytest -v --cov=packages --cov-report=term-missing --cov-report=xml:coverage.xml",
+        "options": {
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+        }
+      },
+      {
+        "label": "coverage-core",
+        "type": "shell",
+        "command": "uv run pytest packages/langgraph-fabric-core/tests -v --cov=packages/langgraph-fabric-core/src/langgraph_fabric_core --cov-report=term-missing --cov-report=xml:coverage-core.xml",
+        "options": {
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+        }
+      },
+      {
+        "label": "coverage-api",
+        "type": "shell",
+        "command": "uv run pytest packages/langgraph-fabric-api/tests -v --cov=packages/langgraph-fabric-api/src/langgraph_fabric_api --cov-report=term-missing --cov-report=xml:coverage-api.xml",
+        "options": {
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+        }
+      },
+      {
+        "label": "coverage-console",
+        "type": "shell",
+        "command": "uv run pytest packages/langgraph-fabric-console/tests -v --cov=packages/langgraph-fabric-console/src/langgraph_fabric_console --cov-report=term-missing --cov-report=xml:coverage-console.xml",
+        "options": {
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+        }
+      },
+      {
+        "label": "coverage-m365",
+        "type": "shell",
+        "command": "uv run pytest packages/langgraph-fabric-m365/tests -v --cov=packages/langgraph-fabric-m365/src/langgraph_fabric_m365 --cov-report=term-missing --cov-report=xml:coverage-m365.xml",
+        "options": {
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+        }
+      },
+      {
+        "label": "validate",
+        "dependsOrder": "sequence",
+        "dependsOn": [
+          "lint",
+          "test-all-strict"
+        ]
       },
       {
         "label": "run-api",
         "type": "shell",
         "command": "uv run langgraph-fabric-api",
         "isBackground": true,
+        "problemMatcher": [
+          {
+            "owner": "custom",
+            "pattern": {
+              "regexp": "^$a",
+              "message": 0
+            },
+            "background": {
+              "activeOnStart": true,
+              "endsPattern": ".*Uvicorn running on http://0\\.0\\.0\\.0:.*"
+            }
+          }
+        ],
         "options": {
           "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
         }
@@ -224,6 +388,19 @@
         "type": "shell",
         "command": "uv run langgraph-fabric-m365",
         "isBackground": true,
+        "problemMatcher": [
+          {
+            "owner": "custom",
+            "pattern": {
+              "regexp": "^$a",
+              "message": 0
+            },
+            "background": {
+              "activeOnStart": true,
+              "endsPattern": ".*Running on http://0\\.0\\.0\\.0:.*"
+            }
+          }
+        ],
         "presentation": {
           "panel": "new"
         },

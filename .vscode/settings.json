@@ -1,4 +1,5 @@
 {
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": [
     "-v"
@@ -13,6 +14,14 @@
   },
   "editor.formatOnSave": true,
   "python.envFile": "${workspaceFolder}/packages/langgraph-fabric-api/examples/.env.notebook",
+  "coverage-gutters.coverageFileNames": [
+    "coverage.xml",
+    "coverage-core.xml",
+    "coverage-api.xml",
+    "coverage-console.xml",
+    "coverage-m365.xml"
+  ],
+  "coverage-gutters.showLineCoverage": true,
   "files.exclude": {
     "**/__pycache__": true,
     "**/*.egg-info": true,
