@@ -64,6 +64,7 @@ def test_settings_allow_empty_mcp_servers(monkeypatch):
     )
     monkeypatch.setenv("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME", "gpt-5.4")
     monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2025-11-15-preview")
+    monkeypatch.delenv("MCP_SERVERS", raising=False)
 
     settings = CoreSettings()
 
