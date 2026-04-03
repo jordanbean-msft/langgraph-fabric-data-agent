@@ -367,6 +367,7 @@
             },
             "background": {
               "activeOnStart": true,
+              "beginsPattern": ".*",
               "endsPattern": ".*Uvicorn running on http://0\\.0\\.0\\.0:.*"
             }
           }
@@ -397,6 +398,7 @@
             },
             "background": {
               "activeOnStart": true,
+              "beginsPattern": ".*",
               "endsPattern": ".*Running on http://0\\.0\\.0\\.0:.*"
             }
           }

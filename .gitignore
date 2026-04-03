@@ -16,7 +16,7 @@ appPackage/manifest.json
 !.env.example
 !packages/**/.env.example
 !packages/**/.env.notebook.example
-.env.my-tenant
+.env.*-tenant
 .env.notebook
 
 # Testing and coverage
