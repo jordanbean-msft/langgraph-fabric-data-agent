@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 
 def _format_sse_event(event: str, data: str) -> bytes:
     """Format an SSE event, prefixing each payload line with `data:`."""
-    data_lines = data.splitlines() or [""]
+    # split("\n") preserves trailing newlines as a trailing empty string,
+    # unlike splitlines() which silently drops them.
+    data_lines = data.split("\n") if data else [""]
     lines = [f"event: {event}"]
     lines.extend(f"data: {line}" for line in data_lines)
     lines.append("")

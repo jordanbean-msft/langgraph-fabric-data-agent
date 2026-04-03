@@ -12,10 +12,11 @@
 # 4. Call the API with the token
 #
 # Prerequisites:
-# - API_CLIENT_ID: Your API app registration Client ID (resource/audience)
+# - API_CLIENT_ID: Your API server app registration Client ID (resource/audience)
 # - CALLER_CLIENT_ID: Your calling app registration Client ID (public client)
 # - TENANT_ID: Your Azure tenant ID (or "common")
 # - API_BASE_URL: The API server URL (localhost:8000 for local development)
+# - redirectUri: Must be added to the calling app registration under Mobile and desktop applications
 ###############################################################################
 
 ### Configuration
@@ -48,13 +49,13 @@
 # https://login.microsoftonline.com/common/oauth2/v2.0/authorize?
 #   client_id=<CALLER_CLIENT_ID>
 #   &response_type=code
-#   &scope=api://<API_CLIENT_ID>/.default
+#   &scope=api://<API_CLIENT_ID>/access_as_user
 #   &redirect_uri=http://localhost:3000/callback
 #   &code_challenge=<code_challenge>
 #   &code_challenge_method=S256
 #   &prompt=select_account
 
-GET {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/authorize?client_id={{callerClientId}}&response_type=code&scope=api%3A%2F%2F{{apiClientId}}%2F.default&redirect_uri={{redirectUri}}&code_challenge={{codeChallenge}}&code_challenge_method=S256&prompt=select_account
+GET {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/authorize?client_id={{callerClientId}}&response_type=code&scope=api%3A%2F%2F{{apiClientId}}%2Faccess_as_user&redirect_uri={{redirectUri}}&code_challenge={{codeChallenge}}&code_challenge_method=S256&prompt=select_account
 
 ###
 # NEXT STEPS:
@@ -75,13 +76,13 @@ GET {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/authorize?client_id={{callerClie
 POST {{entraAuthority}}/{{tenantId}}/oauth2/v2.0/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=authorization_code&client_id={{callerClientId}}&code={{authorizationCode}}&redirect_uri={{redirectUri}}&code_verifier={{codeVerifier}}&scope=api%3A%2F%2F{{apiClientId}}%2F.default
+grant_type=authorization_code&client_id={{callerClientId}}&code={{authorizationCode}}&redirect_uri={{redirectUri}}&code_verifier={{codeVerifier}}&scope=api%3A%2F%2F{{apiClientId}}%2Faccess_as_user
 
 ###
 # Response (example):
 # {
 #   "token_type": "Bearer",
-#   "scope": "api://your-api-client-id/.default",
+#   "scope": "api://your-api-client-id/access_as_user",
 #   "expires_in": 3599,
 #   "ext_expires_in": 3599,
 #   "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ik5rRkJRMFUzUVRVeFFraEZSRE00UWpSR1JEQkJRVEJEVVRaR09FWkVRZz09In0..."

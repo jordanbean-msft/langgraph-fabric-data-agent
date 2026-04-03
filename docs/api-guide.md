@@ -1,10 +1,10 @@
 ---
 title: API Guide
 description: How to integrate with and call the LangGraph MCP REST API sample
-ms.date: 2026-04-01
+ms.date: 2026-04-02
 ---
 
-# API Guide
+## Overview
 
 The `langgraph-fabric-api` package is a standalone FastAPI server that exposes one or more MCP-backed tools, or plain chat-only mode, over HTTP. Your application authenticates its users and streams the agent's response back using Server-Sent Events (SSE).
 
@@ -13,7 +13,7 @@ This guide is for **developers building applications** that integrate with this 
 ## Prerequisites
 
 - Python 3.12 and [uv](https://docs.astral.sh/uv/) installed.
-- An Entra ID app registration for this API server (see the [app registration guide](app-registration.md)).
+- An Entra ID app registration for the API server and a separate calling app registration for your local client. See the [API server app registration section](app-registration.md#api-server-app-registration) and [calling app registration for API examples](app-registration.md#calling-app-registration-for-api-examples).
 - A `.env` file in `packages/langgraph-fabric-api/` with the required server-side environment variables (see [Environment variables](#environment-variables) below).
 
 ## Authentication overview
@@ -44,13 +44,15 @@ Client App          API Server           Microsoft Entra ID       MCP Server
 
 ### Client side: OAuth 2.0 Authorization Code flow
 
-Your application authenticates the end user with the **OAuth 2.0 Authorization Code flow** against Microsoft Entra ID. The audience for the token must be this API server's app registration (not the Fabric API directly). Use the [Microsoft Authentication Library (MSAL)](https://learn.microsoft.com/entra/identity-platform/msal-overview) or any OIDC-compliant library.
+Your calling application authenticates the end user with the **OAuth 2.0 Authorization Code flow** against Microsoft Entra ID. The access token audience must be this API server's app registration, not the Fabric API directly. Use the [Microsoft Authentication Library (MSAL)](https://learn.microsoft.com/entra/identity-platform/msal-overview) or any OIDC-compliant library.
 
-The scope to request is the API's exposed scope:
+Request the API server's delegated scope:
 
 ```
-api://<YOUR_APP_CLIENT_ID>/access_as_user
+api://<YOUR_API_CLIENT_ID>/access_as_user
 ```
+
+That configuration lives on the public calling app registration described in [calling app registration for API examples](app-registration.md#calling-app-registration-for-api-examples).
 
 Your application then includes the resulting JWT in every request to this API:
 
@@ -62,24 +64,40 @@ Authorization: Bearer <user-jwt>
 
 The API server validates the incoming JWT on every request. If MCP servers are configured, it also performs an [On-Behalf-Of exchange](https://learn.microsoft.com/entra/identity-platform/v2-oauth2-on-behalf-of-flow) internally to obtain an access token for each configured MCP server scope:
 
-1. The server uses its own confidential client credentials (`MICROSOFT_APP_ID` + `MICROSOFT_APP_PASSWORD`) to call Entra ID.
+1. The server uses its own confidential client credentials, `MICROSOFT_APP_ID` and `MICROSOFT_APP_PASSWORD`, to call Entra ID.
 2. The incoming user JWT is supplied as `user_assertion`.
 3. Entra ID returns a new token for the configured server scope, for example `https://api.fabric.microsoft.com/.default`.
 4. That server token is forwarded to the matching MCP server. The caller never sees it.
 
-### Entra ID app registration for the API server
+### Entra ID registrations used by this flow
 
-Register the API server as a confidential application in Entra ID. Required settings:
+This flow uses two separate registrations.
 
-| Property | Value |
+| Registration | Client type | Purpose |
+| --- | --- | --- |
+| API server app registration | Confidential client | Accepts the caller's token and performs the OBO exchange |
+| Calling app registration | Public client | Signs the user in and requests the API server scope |
+
+For the API server app registration, configure these values:
+
+| Setting | Value |
 | --- | --- |
-| Supported account types | Single tenant (`AzureADMyOrg`) or multi-tenant as needed |
-| Platform | Web |
-| Client secret | Required — stored in `MICROSOFT_APP_PASSWORD` |
-| Exposed API scope | `access_as_user` (or any name you choose) |
-| API permission | `Delegated` — grant the permissions required by each MCP backend your API will call. For Fabric, use `https://api.fabric.microsoft.com/` → `Item.Read.All`. |
+| Application ID URI | `api://<YOUR_API_CLIENT_ID>` |
+| Exposed API scope | `access_as_user` |
+| Client secret | Required, stored in `MICROSOFT_APP_PASSWORD` |
+| Environment variables | `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_TENANT_ID` |
 
-See the [app registration guide](app-registration.md) for the full registration walkthrough.
+For the calling app registration, configure these values:
+
+| Setting | Value |
+| --- | --- |
+| Platform | Mobile and desktop applications |
+| Redirect URI for notebook example | `http://localhost` |
+| Redirect URI for REST Client example | `http://localhost:3000/callback` |
+| Delegated permission | `api://<YOUR_API_CLIENT_ID>/access_as_user` |
+| Recommended trust configuration | Add the caller app as an authorized client application on the API server registration |
+
+See the [app registration guide](app-registration.md) for the full walkthrough.
 
 ## Start the server
 
@@ -139,7 +157,7 @@ data: [DONE]
 
 Chunks contain partial LLM output tokens and may also include tool-call progress messages. Concatenate all `data:` payloads until the `done` event is received to assemble the full response.
 
-If `MCP_SERVERS` is empty or omitted, the endpoint runs in chat-only mode and does not require an `Authorization` header.
+The current sample always requires an `Authorization` header on `POST /chat/stream`, even if `MCP_SERVERS` is empty and the request will run in chat-only mode.
 
 ## Example: Python client using `httpx`
 
