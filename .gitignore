@@ -30,8 +30,9 @@ htmlcov/
 .ruff_cache/
 .mypy_cache/
 
-# VS Code local settings
-.vscode/settings.json
+# VS Code local settings: only ignore root settings if they contain personal overrides.
+# The root .vscode/settings.json is committed with shared project settings.
+# Use User Settings (Code > Preferences > Open User Settings JSON) for personal overrides.
 
 # macOS
 .DS_Store

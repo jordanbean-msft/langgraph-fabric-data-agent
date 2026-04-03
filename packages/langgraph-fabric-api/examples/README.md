@@ -1,7 +1,7 @@
 ---
 title: API Examples
 description: How to run the API package examples for bearer-token and REST Client streaming calls
-ms.date: 2026-04-02
+ms.date: 2026-04-03
 ---
 
 ## Overview
@@ -57,9 +57,37 @@ export CHAT_API_BASE_URL="http://localhost:8000" API_CLIENT_ID="<api-client-id>"
 ## Run The REST Client Example
 
 1. Install the VS Code REST Client extension if needed.
-2. Open `chat_stream.http`.
-3. Fill in `apiClientId` with the API server app registration client ID and `callerClientId` with the public calling app registration client ID in the Configuration section.
-4. Execute requests in order:
+2. Add a `local` REST Client environment to your **User Settings** (`Preferences: Open User Settings (JSON)`).
+   This is the recommended location because user settings are never committed to git and apply across
+   all workspace folders in multi-root workspaces. Merge the following into your existing
+   `rest-client.environmentVariables` block:
+
+```json
+{
+   "rest-client.environmentVariables": {
+      "local": {
+         "entraAuthority": "https://login.microsoftonline.com",
+         "tenantId": "<your-tenant-id>",
+         "apiBaseUrl": "http://localhost:8000",
+         "redirectUri": "http://localhost:3000/callback",
+         "apiClientId": "<your-api-app-client-id>",
+         "callerClientId": "<your-caller-public-client-id>",
+         "apiScope": "api://<your-api-app-client-id>/access_as_user"
+      }
+   }
+}
+```
+
+3. Create a local test copy and use it for requests:
+
+```bash
+cp packages/langgraph-fabric-api/examples/chat_stream.http packages/langgraph-fabric-api/examples/chat_stream.local.http
+```
+
+4. Add `packages/langgraph-fabric-api/examples/chat_stream.local.http` to `.git/info/exclude` and open `chat_stream.local.http` for local testing.
+5. Select the `local` REST Client environment in VS Code.
+6. Keep real authorization codes and access tokens only in local test files or request prompts. Do not place them in `chat_stream.http`.
+7. Execute requests in order:
    1. Authorization request
    2. Token exchange request
    3. API stream request

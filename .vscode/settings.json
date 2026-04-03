@@ -1,0 +1,32 @@
+{
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": [
+    "-v"
+  ],
+  "python.testing.cwd": "${workspaceFolder}",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "editor.formatOnSave": true,
+  "python.envFile": "${workspaceFolder}/packages/langgraph-fabric-api/examples/.env.notebook",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.egg-info": true,
+    "**/.mypy_cache": true,
+    ".venv": true
+  },
+  "remote.portsAttributes": {
+    "8000": {
+      "label": "M365 adapter / API",
+      "onAutoForward": "notify"
+    },
+    "8001": {
+      "label": "API (alt)",
+      "onAutoForward": "notify"
+    }
+  }
+}
