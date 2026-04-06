@@ -56,7 +56,7 @@ class AgentOrchestrator:
                     "This response includes information returned by the "
                     f"{client.server_config.description or tool.name} MCP server tool."
                 ),
-                url=client.server_config.url,
+                url=getattr(client.server_config, "url", None),
             )
             for tool, client in zip(mcp_tools, mcp_clients, strict=False)
         }
