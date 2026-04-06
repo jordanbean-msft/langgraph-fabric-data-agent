@@ -18,6 +18,7 @@ appPackage/manifest.json
 !packages/**/.env.notebook.example
 .env.*-tenant
 .env.notebook
+manifest.*.json
 
 # Testing and coverage
 .pytest_cache/

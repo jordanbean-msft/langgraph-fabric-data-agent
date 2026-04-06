@@ -1,16 +1,17 @@
 """LangGraph definition for the MCP-enabled agent."""
 
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
 from langgraph.graph import END, StateGraph
+from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
 
 class AgentState(TypedDict):
     """State object passed across graph nodes."""
 
-    messages: list[BaseMessage]
+    messages: Annotated[list[BaseMessage], add_messages]
     auth_mode: str
     user_id: str
     mcp_user_tokens: dict[str, str]

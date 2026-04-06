@@ -143,6 +143,28 @@ async def test_build_graph_finalize_creates_synthesized_prompt_for_llm() -> None
 
 
 @pytest.mark.asyncio
+async def test_build_graph_finalize_includes_user_prompt_in_synthesized_prompt() -> None:
+    """Finalize node preserves the original user request in the synthesized prompt.
+
+    Regression test: AgentState.messages must use add_messages so the HumanMessage
+    is not discarded when subsequent nodes update the messages field.
+    """
+    mock_llm, _ = _make_chat_model(
+        bound_response=_make_tool_call_message(),
+        finalize_response="done",
+    )
+
+    graph = build_graph(mock_llm, [_make_simple_tool(response="some result")])
+
+    await graph.ainvoke(_make_state(messages=[HumanMessage(content="ORIGINAL_USER_QUERY_XYZ")]))
+
+    finalize_call_args = mock_llm.ainvoke.await_args
+    messages_to_finalize = finalize_call_args.args[0]
+    assert len(messages_to_finalize) == 1
+    assert "ORIGINAL_USER_QUERY_XYZ" in messages_to_finalize[0].content
+
+
+@pytest.mark.asyncio
 async def test_build_graph_binds_tool_to_llm() -> None:
     """build_graph calls bind_tools to equip the LLM with MCP tools."""
     mock_llm, _ = _make_chat_model()
