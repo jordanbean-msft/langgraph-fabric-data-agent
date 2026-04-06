@@ -4,6 +4,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph_fabric_core.graph.orchestrator import (
     AgentOrchestrator,
+    ToolCitationMetadata,
     _stringify_stream_chunk_content,
 )
 
@@ -64,6 +65,62 @@ async def test_stream_does_not_emit_raw_tool_output_on_tool_end() -> None:
     assert "[tool] Querying Fabric Data Agent..." in combined_output
     assert "[tool] Fabric Data Agent response received." in combined_output
     assert "Final synthesized answer" in combined_output
+
+
+@pytest.mark.asyncio
+async def test_stream_forwards_events_to_callback() -> None:
+    captured_events: list[dict[str, object]] = []
+
+    class FakeGraph:
+        async def astream_events(self, _state, version):
+            assert version == "v2"
+            yield {"event": "on_tool_start", "name": "mcp_fabric", "data": {}}
+            yield {
+                "event": "on_chat_model_stream",
+                "data": {"chunk": SimpleNamespace(content="Final synthesized answer")},
+            }
+
+    orchestrator = AgentOrchestrator.__new__(AgentOrchestrator)
+    orchestrator.__dict__["_graph"] = FakeGraph()
+    orchestrator.__dict__["_tool_descriptions"] = {"mcp_fabric": "Fabric Data Agent"}
+
+    chunks: list[str] = []
+    async for chunk in orchestrator.stream(
+        prompt="top 5 customers",
+        channel="m365",
+        auth_mode="m365",
+        user_id="m365-user",
+        event_callback=captured_events.append,
+    ):
+        chunks.append(chunk)
+
+    assert chunks[-1] == "Final synthesized answer"
+    assert captured_events[0]["event"] == "on_tool_start"
+    assert captured_events[0]["name"] == "mcp_fabric"
+
+
+def test_get_tool_citation_returns_metadata_when_available() -> None:
+    orchestrator = AgentOrchestrator.__new__(AgentOrchestrator)
+    orchestrator.__dict__["_tool_citations"] = {
+        "mcp_fabric": ToolCitationMetadata(
+            title="Fabric analytics MCP server",
+            content="This response includes information returned by the Fabric analytics MCP server tool.",
+            url="https://api.fabric.microsoft.com/v1/mcp/demo",
+        )
+    }
+
+    citation = orchestrator.get_tool_citation("mcp_fabric")
+
+    assert citation is not None
+    assert citation.title == "Fabric analytics MCP server"
+    assert citation.url == "https://api.fabric.microsoft.com/v1/mcp/demo"
+
+
+def test_get_tool_citation_returns_none_for_unknown_tool() -> None:
+    orchestrator = AgentOrchestrator.__new__(AgentOrchestrator)
+    orchestrator.__dict__["_tool_citations"] = {}
+
+    assert orchestrator.get_tool_citation("unknown") is None
 
 
 def test_stringify_stream_chunk_content_converts_non_string_non_list_to_str() -> None:

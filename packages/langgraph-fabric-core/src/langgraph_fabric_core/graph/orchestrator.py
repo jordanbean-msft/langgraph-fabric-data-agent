@@ -2,7 +2,8 @@
 
 import logging
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
+from dataclasses import dataclass
 
 from langchain_core.messages import BaseMessage, HumanMessage
 
@@ -11,6 +12,15 @@ from langgraph_fabric_core.graph.workflow import build_graph
 from langgraph_fabric_core.mcp.tools import build_mcp_tool
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ToolCitationMetadata:
+    """User-facing citation metadata for an MCP-backed tool."""
+
+    title: str
+    content: str
+    url: str | None = None
 
 
 def _stringify_stream_chunk_content(content: object) -> str:
@@ -39,11 +49,27 @@ class AgentOrchestrator:
         self._tool_descriptions = {
             tool.name: tool.description for tool in mcp_tools if tool.description
         }
+        self._tool_citations = {
+            tool.name: ToolCitationMetadata(
+                title=client.server_config.description or tool.name,
+                content=(
+                    "This response includes information returned by the "
+                    f"{client.server_config.description or tool.name} MCP server tool."
+                ),
+                url=client.server_config.url,
+            )
+            for tool, client in zip(mcp_tools, mcp_clients, strict=False)
+        }
 
     def _tool_display_label(self, tool_name: str) -> str:
         """Resolve a human-friendly label for tool status messages."""
         descriptions = getattr(self, "_tool_descriptions", {})
         return descriptions.get(tool_name, tool_name)
+
+    def get_tool_citation(self, tool_name: str) -> ToolCitationMetadata | None:
+        """Return citation metadata for a tool when available."""
+        citations = getattr(self, "_tool_citations", {})
+        return citations.get(tool_name)
 
     async def run(
         self,
@@ -80,6 +106,7 @@ class AgentOrchestrator:
         user_id: str,
         mcp_user_tokens: dict[str, str] | None = None,
         history: list[BaseMessage] | None = None,
+        event_callback: Callable[[dict[str, object]], None] | None = None,
     ) -> AsyncIterator[str]:
         """Yield streaming updates from graph execution."""
         invocation_id = str(uuid.uuid4())[:8]
@@ -95,6 +122,9 @@ class AgentOrchestrator:
         }
 
         async for event in self._graph.astream_events(state, version="v2"):
+            if event_callback is not None:
+                event_callback(event)
+
             event_name = event.get("event", "")
             if event_name == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")

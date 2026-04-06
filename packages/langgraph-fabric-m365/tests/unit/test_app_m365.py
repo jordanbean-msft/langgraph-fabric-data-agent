@@ -5,7 +5,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langgraph_fabric_core.core.config import McpServerConfig
-from langgraph_fabric_m365.app import HISTORY_KEY, create_m365_app
+from langgraph_fabric_core.graph.orchestrator import ToolCitationMetadata
+from langgraph_fabric_m365.app import (
+    HISTORY_KEY,
+    _build_citation_marker_text,
+    _build_client_citations,
+    create_m365_app,
+)
 from langgraph_fabric_m365.config import M365Settings
 from langgraph_fabric_m365.oauth import PENDING_PROMPT_KEY
 from microsoft_agents.activity import ActivityTypes
@@ -20,11 +26,41 @@ async def _agen(*chunks: str):
 def _streaming_response() -> SimpleNamespace:
     """Build a streaming response test double for M365 streaming-only flows."""
     return SimpleNamespace(
+        _citations=[],
         set_generated_by_ai_label=MagicMock(),
+        set_citations=MagicMock(),
         queue_informative_update=MagicMock(),
         queue_text_chunk=MagicMock(),
         end_stream=AsyncMock(),
     )
+
+
+def test_build_client_citations_returns_expected_metadata() -> None:
+    orchestrator = MagicMock()
+    orchestrator.get_tool_citation.side_effect = [
+        ToolCitationMetadata(
+            title="Fabric MCP",
+            content="Tool-backed response content.",
+            url="https://api.fabric.microsoft.com/v1/mcp/demo",
+        )
+    ]
+
+    citations = _build_client_citations(["mcp_fabric"], orchestrator)
+
+    assert len(citations) == 1
+    assert citations[0].position == 1
+    assert citations[0].appearance is not None
+    assert citations[0].appearance.name == "Fabric MCP"
+    assert citations[0].appearance.abstract == "Tool-backed response content."
+    assert citations[0].appearance.url == "https://api.fabric.microsoft.com/v1/mcp/demo"
+    assert citations[0].appearance.image is not None
+    assert citations[0].appearance.image.name == "Text"
+
+
+def test_build_citation_marker_text_returns_expected_markers() -> None:
+    assert _build_citation_marker_text(0) == ""
+    assert _build_citation_marker_text(1) == " [doc1]"
+    assert _build_citation_marker_text(3) == " [doc1] [doc2] [doc3]"
 
 
 def _make_settings(**overrides) -> M365Settings:
@@ -150,7 +186,63 @@ async def test_message_handler_calls_orchestrator_and_sends_response(
     assert call_kwargs["mcp_user_tokens"] == {"fabric": "fabric-token"}
     context.streaming_response.set_generated_by_ai_label.assert_called_once_with(True)
     context.streaming_response.queue_text_chunk.assert_any_call("Here is the answer")
+    context.streaming_response.set_citations.assert_not_called()
     context.streaming_response.end_stream.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_message_handler_sets_citation_for_used_mcp_tool(
+    sdk_mocks: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _make_settings()
+    orchestrator = MagicMock()
+
+    async def stream_with_tool_event(**kwargs):
+        event_callback = kwargs["event_callback"]
+        event_callback({"event": "on_tool_start", "name": "mcp_fabric", "data": {}})
+        yield "Answer from tool-backed response"
+
+    orchestrator.stream = MagicMock(side_effect=stream_with_tool_event)
+    orchestrator.get_tool_citation = MagicMock(
+        return_value=ToolCitationMetadata(
+            title="Fabric MCP",
+            content="This response includes information returned by the Fabric MCP server tool.",
+            url="https://api.fabric.microsoft.com/v1/mcp/demo",
+        )
+    )
+
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.app.get_m365_user_token",
+        AsyncMock(return_value="fabric-token"),
+    )
+
+    agent_app = await create_m365_app(settings, orchestrator)
+    message_handler = agent_app._handlers["message"]
+
+    context = SimpleNamespace(
+        activity=SimpleNamespace(
+            text="Trace the supply chain",
+            from_property=SimpleNamespace(id="user-1"),
+            channel_id="msteams",
+        ),
+        send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
+    )
+
+    await message_handler(context, _FakeState())
+
+    orchestrator.get_tool_citation.assert_called_once_with("mcp_fabric")
+    citations = context.streaming_response._citations
+    assert len(citations) == 1
+    assert citations[0].appearance is not None
+    assert citations[0].appearance.name == "Fabric MCP"
+    assert "Fabric MCP server tool" in citations[0].appearance.abstract
+    assert citations[0].appearance.url == "https://api.fabric.microsoft.com/v1/mcp/demo"
+    assert citations[0].appearance.image is not None
+    assert citations[0].appearance.image.name == "Text"
+    context.streaming_response.queue_text_chunk.assert_any_call(" [doc1]")
+    context.streaming_response.set_citations.assert_not_called()
 
 
 @pytest.mark.asyncio

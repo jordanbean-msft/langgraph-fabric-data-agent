@@ -1,5 +1,8 @@
 """M365 Agents SDK adapter bridge for Teams and Copilot Chat."""
 
+import logging
+from typing import Any
+
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -8,9 +11,17 @@ from langchain_core.messages import (
     messages_to_dict,
 )
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
-from microsoft_agents.activity import Activity, ActivityTypes
+from microsoft_agents.activity import (
+    Activity,
+    ActivityTypes,
+    ClientCitation,
+    ClientCitationAppearance,
+    ClientCitationIconName,
+    ClientCitationImage,
+)
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import CloudAdapter
+from microsoft_agents.hosting.aiohttp.app.streaming import Citation
 from microsoft_agents.hosting.core import (
     AgentApplication,
     ApplicationOptions,
@@ -35,6 +46,66 @@ from langgraph_fabric_m365.runtime import (
 )
 
 HISTORY_KEY = "history"
+logger = logging.getLogger(__name__)
+
+
+def _build_citation_marker_text(citation_count: int) -> str:
+    """Build inline citation markers expected by Teams/Copilot clients."""
+    if citation_count <= 0:
+        return ""
+
+    markers = " ".join(f"[doc{index}]" for index in range(1, citation_count + 1))
+    return f" {markers}"
+
+
+def _build_client_citations(
+    tool_names: list[str],
+    orchestrator: AgentOrchestrator,
+) -> list[ClientCitation]:
+    """Build rich Teams/Copilot citations for the used MCP tools."""
+    citations: list[ClientCitation] = []
+
+    for tool_name in tool_names:
+        citation = orchestrator.get_tool_citation(tool_name)
+        if citation is None:
+            continue
+
+        citations.append(
+            ClientCitation(
+                position=len(citations) + 1,
+                appearance=ClientCitationAppearance(
+                    name=citation.title,
+                    abstract=citation.content,
+                    url=citation.url,
+                    image=ClientCitationImage(name=ClientCitationIconName.TEXT.value),
+                ),
+            )
+        )
+
+    return citations
+
+
+def _set_streamer_citations(streamer: Any, citations: list[ClientCitation]) -> None:
+    """Set rich citations on the M365 streaming response.
+
+    The current SDK `set_citations()` helper only preserves title and abstract,
+    but Teams/Copilot source cards can also use richer `ClientCitation`
+    appearance metadata such as URLs.
+    """
+    if hasattr(streamer, "_citations"):
+        vars(streamer)["_citations"] = citations
+        return
+
+    simplified_citations = [
+        Citation(
+            title=citation.appearance.name if citation.appearance else None,
+            content=(citation.appearance.abstract if citation.appearance else "") or "Source",
+            url=citation.appearance.url if citation.appearance else None,
+        )
+        for citation in citations
+    ]
+    if hasattr(streamer, "set_citations"):
+        streamer.set_citations(simplified_citations)
 
 
 async def create_m365_app(
@@ -118,6 +189,35 @@ async def create_m365_app(
             raise RuntimeError("M365 channel requires streaming_response for all bot replies")
 
         chunks: list[str] = []
+        used_tool_names: list[str] = []
+
+        def record_tool_event(event: dict[str, object]) -> None:
+            event_name = event.get("event")
+            if event_name not in {"on_tool_start", "on_tool_end"}:
+                return
+
+            tool_name = event.get("name")
+            raw_event_data = event.get("data")
+            event_data = raw_event_data if isinstance(raw_event_data, dict) else {}
+            if not isinstance(tool_name, str):
+                return
+
+            if event_name == "on_tool_start":
+                if tool_name not in used_tool_names:
+                    used_tool_names.append(tool_name)
+
+                logger.debug(
+                    "M365 raw tool call input tool=%s input=%s",
+                    tool_name,
+                    event_data.get("input", event_data),
+                )
+                return
+
+            logger.debug(
+                "M365 raw tool call output tool=%s output=%s",
+                tool_name,
+                event_data.get("output", event_data),
+            )
 
         # Mark responses as AI-generated in M365 clients that support this metadata.
         streamer.set_generated_by_ai_label(True)
@@ -132,6 +232,7 @@ async def create_m365_app(
             user_id=user_id,
             mcp_user_tokens=mcp_user_tokens,
             history=history,
+            event_callback=record_tool_event,
         ):
             if chunk.startswith("\n[tool]"):
                 status_text = chunk.strip()
@@ -142,6 +243,18 @@ async def create_m365_app(
             else:
                 chunks.append(chunk)
                 streamer.queue_text_chunk(chunk)
+
+        citations = _build_client_citations(used_tool_names, orchestrator)
+        if citations:
+            citation_marker_text = _build_citation_marker_text(len(citations))
+            chunks.append(citation_marker_text)
+            streamer.queue_text_chunk(citation_marker_text)
+            logger.debug(
+                "Setting M365 citations for tools=%s titles=%s",
+                used_tool_names,
+                [citation.appearance.name for citation in citations if citation.appearance],
+            )
+            _set_streamer_citations(streamer, citations)
 
         await streamer.end_stream()
 
@@ -160,11 +273,18 @@ async def create_m365_app(
                 "Sign-in is in progress. Complete the sign-in flow and return to this chat.",
             )
 
-        await context.send_activity(
-            Activity(
-                type=ActivityTypes.invoke_response,
-                value={"status": 200, "body": {}},
-            )
-        )
+        invoke_response_payload = {
+            "type": ActivityTypes.invoke_response,
+            "value": {"status": 200, "body": {}},
+        }
+        for key, value in {
+            "from": getattr(context.activity, "recipient", None),
+            "recipient": getattr(context.activity, "from_property", None),
+            "conversation": getattr(context.activity, "conversation", None),
+        }.items():
+            if value is not None:
+                invoke_response_payload[key] = value
+
+        await context.send_activity(Activity.model_validate(invoke_response_payload))
 
     return agent_app
