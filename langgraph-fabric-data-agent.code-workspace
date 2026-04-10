@@ -29,6 +29,7 @@
       "packages/langgraph-fabric-m365/src"
     ],
     "python.defaultInterpreterPath": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+    "flake8.enabled": false,
     "coverage-gutters.coverageFileNames": [
       "coverage.xml",
       "coverage-core.xml",

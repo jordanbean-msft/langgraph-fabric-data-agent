@@ -23,34 +23,48 @@ class ContextFilter(logging.Filter):
 
 
 class _ColorFormatter(logging.Formatter):
-    """Optionally colorize log levels using ANSI escape sequences."""
+    """Optionally colorize log output using ANSI escape sequences.
 
-    _reset: ClassVar[str] = "\x1b[0m"
-    _level_colors: ClassVar[dict[int, str]] = {
-        logging.DEBUG: "\x1b[36m",
-        logging.INFO: "\x1b[32m",
-        logging.WARNING: "\x1b[33m",
-        logging.ERROR: "\x1b[31m",
-        logging.CRITICAL: "\x1b[35m",
+    Colorizes timestamp (dim), level name (per-level color), logger name (blue),
+    and message body (level color for WARNING and above).
+    """
+
+    _RESET: ClassVar[str] = "\x1b[0m"
+    _DIM: ClassVar[str] = "\x1b[2m"
+    _BLUE: ClassVar[str] = "\x1b[34m"
+    _LEVEL_COLORS: ClassVar[dict[int, str]] = {
+        logging.DEBUG: "\x1b[36m",  # cyan
+        logging.INFO: "\x1b[32m",  # green
+        logging.WARNING: "\x1b[33m",  # yellow
+        logging.ERROR: "\x1b[31m",  # red
+        logging.CRITICAL: "\x1b[1;31m",  # bold red
     }
+    _COLORED_MSG_LEVELS: ClassVar[frozenset[int]] = frozenset(
+        {logging.WARNING, logging.ERROR, logging.CRITICAL}
+    )
 
     def __init__(self, *args: object, use_color: bool, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         self._use_color = use_color
 
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:  # noqa: N802
+        """Wrap the timestamp in dim ANSI codes when color is enabled."""
+        result = super().formatTime(record, datefmt)
+        if self._use_color:
+            return f"{self._DIM}{result}{self._RESET}"
+        return result
+
     def format(self, record: logging.LogRecord) -> str:
         if not self._use_color:
             return super().format(record)
 
-        original_level_name = record.levelname
-        color = self._level_colors.get(record.levelno)
-        if color:
-            record.levelname = f"{color}{original_level_name}{self._reset}"
-
-        try:
-            return super().format(record)
-        finally:
-            record.levelname = original_level_name
+        color = self._LEVEL_COLORS.get(record.levelno, self._RESET)
+        r = logging.makeLogRecord(record.__dict__)
+        r.levelname = f"{color}{r.levelname:<8}{self._RESET}"
+        r.name = f"{self._BLUE}{r.name}{self._RESET}"
+        if record.levelno in self._COLORED_MSG_LEVELS:
+            r.msg = f"{color}{r.msg}{self._RESET}"
+        return super().format(r)
 
 
 def _resolve_log_level(level: str) -> int:
@@ -120,8 +134,8 @@ def configure_logging(level: str = "INFO", log_level_override: str | None = None
     handler = logging.StreamHandler()
     formatter = _ColorFormatter(
         fmt=(
-            "%(asctime)s | %(levelname)s | %(name)s | "
-            "inv=%(invocation_id)s channel=%(channel)s mode=%(mode)s user=%(user_id)s | %(message)s"
+            "%(asctime)s %(levelname)s %(name)s "
+            "inv=%(invocation_id)s channel=%(channel)s mode=%(mode)s user=%(user_id)s: %(message)s"
         ),
         use_color=_should_use_color(handler.stream),
     )

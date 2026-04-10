@@ -78,7 +78,74 @@ def test_color_formatter_colorizes_levelname_when_enabled():
 
     formatted = formatter.format(record)
 
-    assert "\x1b[31mERROR\x1b[0m" in formatted
+    assert "\x1b[31mERROR" in formatted
+    assert "\x1b[0m" in formatted
+
+
+def test_color_formatter_colorizes_logger_name_blue() -> None:
+    formatter = _ColorFormatter("%(name)s | %(message)s", use_color=True)
+    logger = logging.getLogger("test.color.blue")
+    record = logger.makeRecord(logger.name, logging.INFO, __file__, 1, "hi", (), None)
+
+    formatted = formatter.format(record)
+
+    assert "\x1b[34mtest.color.blue\x1b[0m" in formatted
+
+
+def test_color_formatter_colorizes_message_for_warning_and_above() -> None:
+    formatter = _ColorFormatter("%(levelname)s | %(message)s", use_color=True)
+    logger = logging.getLogger("test.color.msg")
+    for level, color in [
+        (logging.WARNING, "\x1b[33m"),
+        (logging.ERROR, "\x1b[31m"),
+        (logging.CRITICAL, "\x1b[1;31m"),
+    ]:
+        record = logger.makeRecord(logger.name, level, __file__, 1, "alert", (), None)
+        formatted = formatter.format(record)
+        assert f"{color}alert\x1b[0m" in formatted
+
+
+def test_color_formatter_does_not_colorize_message_for_info_and_debug() -> None:
+    formatter = _ColorFormatter("%(levelname)s | %(message)s", use_color=True)
+    logger = logging.getLogger("test.color.msg")
+    for level in (logging.INFO, logging.DEBUG):
+        record = logger.makeRecord(logger.name, level, __file__, 1, "plain", (), None)
+        formatted = formatter.format(record)
+        # Message text should appear without color wrapping
+        assert "plain" in formatted
+        assert formatted.count("plain") == 1
+        # The word "plain" should not be preceded by a color code
+        idx = formatted.index("plain")
+        assert formatted[idx - 4 : idx] != "\x1b[32m"
+
+
+def test_color_formatter_dims_timestamp() -> None:
+    formatter = _ColorFormatter(
+        "%(asctime)s %(levelname)s %(message)s",
+        use_color=True,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logger = logging.getLogger("test.color.ts")
+    record = logger.makeRecord(logger.name, logging.INFO, __file__, 1, "ts", (), None)
+
+    formatted = formatter.format(record)
+
+    # Timestamp should start with dim code
+    assert formatted.startswith("\x1b[2m")
+    # Dim region should be closed before the level color
+    dim_end = formatted.index("\x1b[0m")
+    level_color_idx = formatted.index("\x1b[32m")  # green for INFO
+    assert dim_end < level_color_idx
+
+
+def test_color_formatter_uses_bold_red_for_critical() -> None:
+    formatter = _ColorFormatter("%(levelname)s | %(message)s", use_color=True)
+    logger = logging.getLogger("test.color.crit")
+    record = logger.makeRecord(logger.name, logging.CRITICAL, __file__, 1, "fail", (), None)
+
+    formatted = formatter.format(record)
+
+    assert "\x1b[1;31mCRITICAL\x1b[0m" in formatted
 
 
 def test_color_formatter_does_not_colorize_when_disabled():
@@ -98,6 +165,20 @@ def test_color_formatter_does_not_colorize_when_disabled():
 
     assert "WARNING | watch out" in formatted
     assert "\x1b[" not in formatted
+
+
+def test_color_formatter_does_not_dim_timestamp_when_disabled() -> None:
+    formatter = _ColorFormatter(
+        "%(asctime)s | %(message)s",
+        use_color=False,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logger = logging.getLogger("test.color.ts")
+    record = logger.makeRecord(logger.name, logging.INFO, __file__, 1, "ts", (), None)
+
+    formatted = formatter.format(record)
+
+    assert "\x1b[2m" not in formatted
 
 
 # ---------------------------------------------------------------------------
