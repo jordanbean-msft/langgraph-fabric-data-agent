@@ -42,7 +42,7 @@ The dev tunnel tasks prompt for these inputs:
 
 | Input | Default | Purpose |
 | --- | --- | --- |
-| `devTunnelId` | `langgraph-fabric-data-agent-m365` | Reusable dev tunnel name for the M365 adapter endpoint. |
+| `devTunnelIdM365` | `lgfdam365-20260422` | Reusable dev tunnel name for the M365 adapter endpoint. |
 | `m365Port` | `8000` | Local port exposed by the M365 adapter. |
 | `devTunnelExpiration` | `7d` | Lifetime of the dev tunnel. Available choices are `4h`, `1d`, and `7d`. |
 

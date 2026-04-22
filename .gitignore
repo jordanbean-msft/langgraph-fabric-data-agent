@@ -47,3 +47,7 @@ agent_output.log
 
 # Python version override (already tracked via .python-version)
 .python-version.local
+
+.img/tmp/
+
+**/examples/*.example.json

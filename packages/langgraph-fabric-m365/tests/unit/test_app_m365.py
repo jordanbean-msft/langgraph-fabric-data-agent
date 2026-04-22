@@ -1,5 +1,6 @@
 """Unit tests for the M365 app handlers (app.py)."""
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -8,6 +9,8 @@ from langgraph_fabric_core.core.config import McpServerConfig
 from langgraph_fabric_core.graph.orchestrator import ToolCitationMetadata
 from langgraph_fabric_m365.app import (
     HISTORY_KEY,
+    STREAM_HEARTBEAT_INTERVAL_SECONDS,
+    STREAM_HEARTBEAT_MESSAGE,
     _build_citation_marker_text,
     _build_client_citations,
     create_m365_app,
@@ -61,6 +64,10 @@ def test_build_citation_marker_text_returns_expected_markers() -> None:
     assert _build_citation_marker_text(0) == ""
     assert _build_citation_marker_text(1) == " [doc1]"
     assert _build_citation_marker_text(3) == " [doc1] [doc2] [doc3]"
+
+
+def test_stream_heartbeat_interval_default_is_12_seconds() -> None:
+    assert STREAM_HEARTBEAT_INTERVAL_SECONDS == 12
 
 
 def _make_settings(**overrides) -> M365Settings:
@@ -188,6 +195,54 @@ async def test_message_handler_calls_orchestrator_and_sends_response(
     context.streaming_response.queue_text_chunk.assert_any_call("Here is the answer")
     context.streaming_response.set_citations.assert_not_called()
     context.streaming_response.end_stream.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_message_handler_returns_adaptive_card_for_card_command(
+    sdk_mocks: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _make_settings()
+    orchestrator = MagicMock()
+    orchestrator.stream = MagicMock()
+
+    get_token_mock = AsyncMock(return_value="fabric-token")
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.app.get_m365_user_token",
+        get_token_mock,
+    )
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.app._load_action_card_payload",
+        lambda: {"type": "AdaptiveCard", "version": "1.5", "body": []},
+    )
+
+    agent_app = await create_m365_app(settings, orchestrator)
+    message_handler = agent_app._handlers["message"]
+
+    state = _FakeState()
+    context = SimpleNamespace(
+        activity=SimpleNamespace(
+            text="/card",
+            from_property=SimpleNamespace(id="user-1"),
+            channel_id="msteams",
+        ),
+        send_activity=AsyncMock(),
+    )
+
+    await message_handler(context, state)
+
+    orchestrator.stream.assert_not_called()
+    get_token_mock.assert_not_awaited()
+    context.send_activity.assert_awaited_once()
+
+    sent_activity = context.send_activity.await_args.args[0]
+    attachment = sent_activity.attachments[0]
+    content_type = getattr(attachment, "content_type", None) or attachment["contentType"]
+    content = getattr(attachment, "content", None) or attachment["content"]
+
+    assert content_type == "application/vnd.microsoft.card.adaptive"
+    assert content["type"] == "AdaptiveCard"
+    assert state.get_value(PENDING_PROMPT_KEY) is None
 
 
 @pytest.mark.asyncio
@@ -537,6 +592,49 @@ async def test_message_handler_uses_streaming_response_queue_updates(
     context.streaming_response.queue_text_chunk.assert_any_call("Final")
     context.streaming_response.queue_text_chunk.assert_any_call(" answer")
     context.streaming_response.end_stream.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_message_handler_sends_heartbeat_update_during_long_stream(
+    sdk_mocks: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _make_settings()
+    orchestrator = MagicMock()
+
+    async def delayed_stream(**kwargs):
+        await asyncio.sleep(0.03)
+        yield "Final answer"
+
+    orchestrator.stream = MagicMock(side_effect=delayed_stream)
+
+    monkeypatch.setattr(
+        "langgraph_fabric_m365.app.get_m365_user_token",
+        AsyncMock(return_value="fabric-token"),
+    )
+    monkeypatch.setattr("langgraph_fabric_m365.app.STREAM_HEARTBEAT_INTERVAL_SECONDS", 0.01)
+
+    agent_app = await create_m365_app(settings, orchestrator)
+    message_handler = agent_app._handlers["message"]
+
+    context = SimpleNamespace(
+        activity=SimpleNamespace(
+            text="Show me sales data",
+            from_property=SimpleNamespace(id="user-1"),
+            channel_id="msteams",
+        ),
+        send_activity=AsyncMock(),
+        streaming_response=_streaming_response(),
+    )
+
+    await message_handler(context, _FakeState())
+
+    informative_updates = [
+        call.args[0]
+        for call in context.streaming_response.queue_informative_update.call_args_list
+        if call.args
+    ]
+    assert STREAM_HEARTBEAT_MESSAGE in informative_updates
 
 
 @pytest.mark.asyncio

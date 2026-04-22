@@ -6,508 +6,564 @@
     },
     {
       "name": "langgraph-fabric-core",
-      "path": "packages/langgraph-fabric-core"
-    },
-    {
-      "name": "langgraph-fabric-api",
-      "path": "packages/langgraph-fabric-api"
-    },
-    {
-      "name": "langgraph-fabric-console",
-      "path": "packages/langgraph-fabric-console"
-    },
-    {
-      "name": "langgraph-fabric-m365",
-      "path": "packages/langgraph-fabric-m365"
-    }
-  ],
-  "settings": {
-    "python.analysis.extraPaths": [
-      "packages/langgraph-fabric-core/src",
-      "packages/langgraph-fabric-api/src",
-      "packages/langgraph-fabric-console/src",
-      "packages/langgraph-fabric-m365/src"
-    ],
-    "python.defaultInterpreterPath": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-    "flake8.enabled": false,
-    "coverage-gutters.coverageFileNames": [
-      "coverage.xml",
-      "coverage-core.xml",
-      "coverage-api.xml",
-      "coverage-console.xml",
-      "coverage-m365.xml"
-    ],
-    "coverage-gutters.showLineCoverage": true,
-    "[python]": {
-      "editor.defaultFormatter": "charliermarsh.ruff",
-      "editor.formatOnSave": true
-    }
-  },
-  "extensions": {
-    "recommendations": [
-      "ms-python.python",
-      "ms-python.debugpy",
-      "ms-python.vscode-pylance",
-      "charliermarsh.ruff",
-      "humao.rest-client",
-      "ms-toolsai.jupyter",
-      "ryanluker.vscode-coverage-gutters"
-    ]
-  },
-  "launch": {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "Console: interactive chat",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "langgraph_fabric_console.main",
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-console}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": true
+      "path": "packages/langgraph-fabric-core""default": "lgfdam365-20260422"{
+        "name": "langgraph-fabric-api",
+        "path": "packages/langgraph-fabric-api"
       },
       {
-        "name": "API: FastAPI (uvicorn)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "langgraph_fabric_api.main",
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-api}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": true
+        "name": "langgraph-fabric-console",
+        "path": "packages/langgraph-fabric-console"
       },
       {
-        "name": "M365: adapter",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "langgraph_fabric_m365.main",
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": true
-      },
-      {
-        "name": "Tests: core (pytest)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-core/tests",
-          "-v"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-core}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: api (pytest)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-api/tests",
-          "-v"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-api}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: console (pytest)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-console/tests",
-          "-v"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-console}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: m365 (pytest)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-m365/tests",
-          "-v"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: all (pytest)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "-v"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: all (coverage)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "-v",
-          "--cov=packages",
-          "--cov-report=term-missing",
-          "--cov-report=xml:coverage.xml"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: core (coverage)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-core/tests",
-          "-v",
-          "--cov=packages/langgraph-fabric-core/src/langgraph_fabric_core",
-          "--cov-report=term-missing",
-          "--cov-report=xml:coverage-core.xml"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: api (coverage)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-api/tests",
-          "-v",
-          "--cov=packages/langgraph-fabric-api/src/langgraph_fabric_api",
-          "--cov-report=term-missing",
-          "--cov-report=xml:coverage-api.xml"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-api}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: console (coverage)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-console/tests",
-          "-v",
-          "--cov=packages/langgraph-fabric-console/src/langgraph_fabric_console",
-          "--cov-report=term-missing",
-          "--cov-report=xml:coverage-console.xml"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-console}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
-      },
-      {
-        "name": "Tests: m365 (coverage)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "pytest",
-        "args": [
-          "packages/langgraph-fabric-m365/tests",
-          "-v",
-          "--cov=packages/langgraph-fabric-m365/src/langgraph_fabric_m365",
-          "--cov-report=term-missing",
-          "--cov-report=xml:coverage-m365.xml"
-        ],
-        "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
-        "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
-        "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
-        "justMyCode": false
+        "name": "langgraph-fabric-m365",
+        "path": "packages/langgraph-fabric-m365"
       }
-    ]
-  },
-  "tasks": {
-    "version": "2.0.0",
-    "tasks": [
-      {
-        "label": "sync-venv",
-        "type": "shell",
-        "command": "uv sync --all-packages --extra dev",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+    ],
+    "settings": {
+      "python.analysis.extraPaths": [
+        "packages/langgraph-fabric-core/src",
+        "packages/langgraph-fabric-api/src",
+        "packages/langgraph-fabric-console/src",
+        "packages/langgraph-fabric-m365/src"
+      ],
+      "python.defaultInterpreterPath": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+      "flake8.enabled": false,
+      "coverage-gutters.coverageFileNames": [
+        "coverage.xml",
+        "coverage-core.xml",
+        "coverage-api.xml",
+        "coverage-console.xml",
+        "coverage-m365.xml"
+      ],
+      "coverage-gutters.showLineCoverage": true,
+      "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true
+      }
+    },
+    "extensions": {
+      "recommendations": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "humao.rest-client",
+        "ms-toolsai.jupyter",
+        "ryanluker.vscode-coverage-gutters"
+      ]
+    },
+    "launch": {
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Workflow: Console (run-console)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "langgraph_fabric_console.main",
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-console}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": true
+        },
+        {
+          "name": "Workflow: API (run-api)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "langgraph_fabric_api.main",
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-api}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": true
+        },
+        {
+          "name": "Workflow: M365 (run-m365)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "langgraph_fabric_m365.main",
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": true
+        },
+        {
+          "name": "Workflow: M365 + DevTunnel",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "langgraph_fabric_m365.main",
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "console": "integratedTerminal",
+          "internalConsoleOptions": "neverOpen",
+          "justMyCode": true,
+          "preLaunchTask": "devtunnel-start",
+          "postDebugTask": "devtunnel-stop"
+        },
+        {
+          "name": "Tests: core (pytest)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-core/tests",
+            "-v"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-core}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: api (pytest)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-api/tests",
+            "-v"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-api}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: console (pytest)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-console/tests",
+            "-v"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-console}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: m365 (pytest)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-m365/tests",
+            "-v"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: all (pytest)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "-v"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: all (coverage)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "-v",
+            "--cov=packages",
+            "--cov-report=term-missing",
+            "--cov-report=xml:coverage.xml"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: core (coverage)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-core/tests",
+            "-v",
+            "--cov=packages/langgraph-fabric-core/src/langgraph_fabric_core",
+            "--cov-report=term-missing",
+            "--cov-report=xml:coverage-core.xml"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: api (coverage)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-api/tests",
+            "-v",
+            "--cov=packages/langgraph-fabric-api/src/langgraph_fabric_api",
+            "--cov-report=term-missing",
+            "--cov-report=xml:coverage-api.xml"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-api}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: console (coverage)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-console/tests",
+            "-v",
+            "--cov=packages/langgraph-fabric-console/src/langgraph_fabric_console",
+            "--cov-report=term-missing",
+            "--cov-report=xml:coverage-console.xml"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-console}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
+        },
+        {
+          "name": "Tests: m365 (coverage)",
+          "type": "debugpy",
+          "request": "launch",
+          "module": "pytest",
+          "args": [
+            "packages/langgraph-fabric-m365/tests",
+            "-v",
+            "--cov=packages/langgraph-fabric-m365/src/langgraph_fabric_m365",
+            "--cov-report=term-missing",
+            "--cov-report=xml:coverage-m365.xml"
+          ],
+          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}",
+          "envFile": "${workspaceFolder:langgraph-fabric-m365}/.env",
+          "python": "${workspaceFolder:langgraph-fabric-data-agent (root)}/.venv/bin/python",
+          "justMyCode": false
         }
-      },
-      {
-        "label": "lint",
-        "type": "shell",
-        "command": "uv run ruff check .",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+      ],
+      "compounds": [
+        {
+          "name": "Workflow: API + Console",
+          "configurations": [
+            "Workflow: API (run-api)",
+            "Workflow: Console (run-console)"
+          ]
         }
-      },
-      {
-        "label": "test-core",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-core/tests -v --tb=short",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "test-api",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-api/tests -v --tb=short",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "test-console",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-console/tests -v --tb=short",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "test-m365",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-m365/tests -v --tb=short",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "test-all",
-        "type": "shell",
-        "command": "uv run pytest -v --tb=short",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "test-all-strict",
-        "type": "shell",
-        "command": "uv run pytest -v --tb=short -W error -W ignore:Exception\\ ignored\\ in:pytest.PytestUnraisableExceptionWarning",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "coverage",
-        "type": "shell",
-        "command": "uv run pytest -v --cov=packages --cov-report=term-missing --cov-report=xml:coverage.xml",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "coverage-core",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-core/tests -v --cov=packages/langgraph-fabric-core/src/langgraph_fabric_core --cov-report=term-missing --cov-report=xml:coverage-core.xml",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "coverage-api",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-api/tests -v --cov=packages/langgraph-fabric-api/src/langgraph_fabric_api --cov-report=term-missing --cov-report=xml:coverage-api.xml",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "coverage-console",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-console/tests -v --cov=packages/langgraph-fabric-console/src/langgraph_fabric_console --cov-report=term-missing --cov-report=xml:coverage-console.xml",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "coverage-m365",
-        "type": "shell",
-        "command": "uv run pytest packages/langgraph-fabric-m365/tests -v --cov=packages/langgraph-fabric-m365/src/langgraph_fabric_m365 --cov-report=term-missing --cov-report=xml:coverage-m365.xml",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "validate",
-        "dependsOrder": "sequence",
-        "dependsOn": [
-          "lint",
-          "test-all-strict"
-        ]
-      },
-      {
-        "label": "run-api",
-        "type": "shell",
-        "command": "uv run langgraph-fabric-api",
-        "isBackground": true,
-        "problemMatcher": [
-          {
-            "owner": "custom",
-            "pattern": {
-              "regexp": "^$a",
-              "message": 0
-            },
-            "background": {
-              "activeOnStart": true,
-              "beginsPattern": ".*",
-              "endsPattern": ".*Uvicorn running on http://0\\.0\\.0\\.0:.*"
-            }
+      ]
+    },
+    "tasks": {
+      "version": "2.0.0",
+      "tasks": [
+        {
+          "label": "sync-venv",
+          "type": "shell",
+          "command": "uv sync --all-packages --extra dev",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
           }
-        ],
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "run-console",
-        "type": "shell",
-        "command": "uv run langgraph-fabric-console",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "run-m365",
-        "type": "shell",
-        "command": "uv run langgraph-fabric-m365",
-        "isBackground": true,
-        "problemMatcher": [
-          {
-            "owner": "custom",
-            "pattern": {
-              "regexp": "^$a",
-              "message": 0
-            },
-            "background": {
-              "activeOnStart": true,
-              "beginsPattern": ".*",
-              "endsPattern": ".*Running on http://0\\.0\\.0\\.0:.*"
-            }
+        },
+        {
+          "label": "lint",
+          "type": "shell",
+          "command": "uv run ruff check .",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
           }
-        ],
-        "presentation": {
-          "panel": "new"
         },
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "devtunnel-login",
-        "type": "shell",
-        "command": "devtunnel user login",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "devtunnel-create",
-        "type": "shell",
-        "command": "devtunnel create ${input:devTunnelId} --allow-anonymous --expiration ${input:devTunnelExpiration} --description \"langgraph-fabric-data-agent M365 adapter\" --host-header unchanged",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "devtunnel-show",
-        "type": "shell",
-        "command": "devtunnel show ${input:devTunnelId}",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "devtunnel-port-configure",
-        "type": "shell",
-        "command": "devtunnel port delete ${input:devTunnelId} -p ${input:m365Port} > /dev/null 2>&1 || true; devtunnel port create ${input:devTunnelId} -p ${input:m365Port} --protocol http --host-header unchanged",
-        "presentation": {
-          "panel": "new"
+        {
+          "label": "test-core",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-core/tests -v --tb=short",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
         },
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
-        }
-      },
-      {
-        "label": "devtunnel-host",
-        "type": "shell",
-        "command": "devtunnel host ${input:devTunnelId}",
-        "isBackground": true,
-        "problemMatcher": [],
-        "presentation": {
-          "panel": "new"
+        {
+          "label": "test-api",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-api/tests -v --tb=short",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
         },
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+        {
+          "label": "test-console",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-console/tests -v --tb=short",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "test-m365",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-m365/tests -v --tb=short",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "test-all",
+          "type": "shell",
+          "command": "uv run pytest -v --tb=short",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "test-all-strict",
+          "type": "shell",
+          "command": "uv run pytest -v --tb=short -W error -W ignore:Exception\\ ignored\\ in:pytest.PytestUnraisableExceptionWarning",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "coverage",
+          "type": "shell",
+          "command": "uv run pytest -v --cov=packages --cov-report=term-missing --cov-report=xml:coverage.xml",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "coverage-core",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-core/tests -v --cov=packages/langgraph-fabric-core/src/langgraph_fabric_core --cov-report=term-missing --cov-report=xml:coverage-core.xml",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "coverage-api",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-api/tests -v --cov=packages/langgraph-fabric-api/src/langgraph_fabric_api --cov-report=term-missing --cov-report=xml:coverage-api.xml",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "coverage-console",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-console/tests -v --cov=packages/langgraph-fabric-console/src/langgraph_fabric_console --cov-report=term-missing --cov-report=xml:coverage-console.xml",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "coverage-m365",
+          "type": "shell",
+          "command": "uv run pytest packages/langgraph-fabric-m365/tests -v --cov=packages/langgraph-fabric-m365/src/langgraph_fabric_m365 --cov-report=term-missing --cov-report=xml:coverage-m365.xml",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "validate",
+          "dependsOrder": "sequence",
+          "dependsOn": [
+            "lint",
+            "test-all-strict"
+          ]
+        },
+        {
+          "label": "run-api",
+          "type": "shell",
+          "command": "uv run langgraph-fabric-api",
+          "isBackground": true,
+          "problemMatcher": [
+            {
+              "owner": "custom",
+              "pattern": {
+                "regexp": "^$a",
+                "message": 0
+              },
+              "background": {
+                "activeOnStart": true,
+                "beginsPattern": ".*",
+                "endsPattern": ".*Uvicorn running on http://0\\.0\\.0\\.0:.*"
+              }
+            }
+          ],
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "run-console",
+          "type": "shell",
+          "command": "uv run langgraph-fabric-console",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "run-m365",
+          "type": "shell",
+          "command": "uv run langgraph-fabric-m365",
+          "isBackground": true,
+          "problemMatcher": [
+            {
+              "owner": "custom",
+              "pattern": {
+                "regexp": "^$a",
+                "message": 0
+              },
+              "background": {
+                "activeOnStart": true,
+                "beginsPattern": ".*",
+                "endsPattern": ".*Running on http://0\\.0\\.0\\.0:.*"
+              }
+            }
+          ],
+          "presentation": {
+            "panel": "new"
+          },
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "devtunnel-login",
+          "type": "shell",
+          "command": "devtunnel user login",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "devtunnel-create",
+          "type": "shell",
+          "command": "devtunnel create ${input:devTunnelIdM365} --allow-anonymous --expiration ${input:devTunnelExpiration} --description \"langgraph-fabric-data-agent M365 adapter\" --host-header unchanged",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "devtunnel-show",
+          "type": "shell",
+          "command": "devtunnel show ${input:devTunnelIdM365}",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "devtunnel-port-configure",
+          "type": "shell",
+          "command": "devtunnel port delete ${input:devTunnelIdM365} -p ${input:m365Port} > /dev/null 2>&1 || true; devtunnel port create ${input:devTunnelIdM365} -p ${input:m365Port} --protocol http --host-header unchanged",
+          "presentation": {
+            "panel": "new"
+          },
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "devtunnel-host",
+          "type": "shell",
+          "command": "devtunnel host ${input:devTunnelIdM365}",
+          "isBackground": true,
+          "problemMatcher": [
+            {
+              "owner": "custom",
+              "pattern": {
+                "regexp": "^$a",
+                "message": 0
+              },
+              "background": {
+                "activeOnStart": true,
+                "beginsPattern": ".*",
+                "endsPattern": ".*"
+              }
+            }
+          ],
+          "presentation": {
+            "panel": "new"
+          },
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "devtunnel-start",
+          "dependsOrder": "sequence",
+          "dependsOn": [
+            "devtunnel-port-configure",
+            "devtunnel-host"
+          ],
+          "problemMatcher": []
+        },
+        {
+          "label": "devtunnel-stop",
+          "type": "shell",
+          "command": "pkill -f \"devtunnel host ${input:devTunnelIdM365}\" || true",
+          "problemMatcher": [],
+          "presentation": {
+            "panel": "new"
+          },
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-data-agent (root)}"
+          }
+        },
+        {
+          "label": "run-m365-and-devtunnel-host",
+          "dependsOrder": "parallel",
+          "dependsOn": [
+            "devtunnel-host",
+            "run-m365"
+          ],
+          "problemMatcher": []
+        },
+        {
+          "label": "run-m365-with-devtunnel",
+          "dependsOrder": "sequence",
+          "dependsOn": [
+            "devtunnel-port-configure",
+            "run-m365-and-devtunnel-host"
+          ]
+        },
+        {
+          "label": "build-m365-app-package",
+          "type": "shell",
+          "command": "mkdir -p appPackage/build && rm -f appPackage/build/langgraph-fabric-data-agent-m365.zip && zip -j appPackage/build/langgraph-fabric-data-agent-m365.zip appPackage/manifest.json appPackage/color.png appPackage/outline.png",
+          "options": {
+            "cwd": "${workspaceFolder:langgraph-fabric-m365}"
+          }
         }
-      },
-      {
-        "label": "run-m365-and-devtunnel-host",
-        "dependsOrder": "parallel",
-        "dependsOn": [
-          "devtunnel-host",
-          "run-m365"
-        ]
-      },
-      {
-        "label": "run-m365-with-devtunnel",
-        "dependsOrder": "sequence",
-        "dependsOn": [
-          "devtunnel-port-configure",
-          "run-m365-and-devtunnel-host"
-        ]
-      },
-      {
-        "label": "build-m365-app-package",
-        "type": "shell",
-        "command": "mkdir -p appPackage/build && rm -f appPackage/build/langgraph-fabric-data-agent-m365.zip && zip -j appPackage/build/langgraph-fabric-data-agent-m365.zip appPackage/manifest.json appPackage/color.png appPackage/outline.png",
-        "options": {
-          "cwd": "${workspaceFolder:langgraph-fabric-m365}"
+      ],
+      "inputs": [
+        {
+          "id": "devTunnelIdM365",
+          "type": "promptString",
+          "description": "Dev Tunnel ID to reuse for the M365 Agents SDK endpoint",
+          "default": "lgfdam365-20260422"
+        },
+        {
+          "id": "m365Port",
+          "type": "promptString",
+          "description": "Local port exposed by the M365 adapter",
+          "default": "8000"
+        },
+        {
+          "id": "devTunnelExpiration",
+          "type": "pickString",
+          "description": "How long the dev tunnel should stay alive",
+          "options": [
+            "4h",
+            "1d",
+            "7d"
+          ],
+          "default": "7d"
         }
-      }
-    ],
-    "inputs": [
-      {
-        "id": "devTunnelId",
-        "type": "promptString",
-        "description": "Dev Tunnel ID to reuse for the M365 Agents SDK endpoint",
-        "default": "langgraph-fabric-data-agent-m365"
-      },
-      {
-        "id": "m365Port",
-        "type": "promptString",
-        "description": "Local port exposed by the M365 adapter",
-        "default": "8000"
-      },
-      {
-        "id": "devTunnelExpiration",
-        "type": "pickString",
-        "description": "How long the dev tunnel should stay alive",
-        "options": [
-          "4h",
-          "1d",
-          "7d"
-        ],
-        "default": "7d"
-      }
-    ]
+      ]
+    }
   }
-}

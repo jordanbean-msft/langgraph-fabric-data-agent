@@ -69,11 +69,13 @@ def build_mcp_tool(client: McpClient):
             selected_tool = tools[0] if tools else {"name": "query"}
             selected_tool_name = selected_tool.get("name", "query")
             query_argument_name = _resolve_query_argument_name(selected_tool)
-            return await client.call_tool(
+            result = await client.call_tool(
                 tool_name=selected_tool_name,
                 arguments={query_argument_name: query},
                 auth_context=auth_context,
             )
+            logger.info("MCP server %s tool result: %s", server.name, result)
+            return result
         except ValueError as exc:
             logger.warning("MCP server %s authentication unavailable: %s", server.name, exc)
             return (

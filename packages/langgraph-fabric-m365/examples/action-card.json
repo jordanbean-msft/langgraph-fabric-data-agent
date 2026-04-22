@@ -1,0 +1,203 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "backgroundImage": {
+        "url": "https://singlecolorimage.com/get/1f2937/1200x500"
+      },
+      "bleed": true,
+      "minHeight": "240px",
+      "verticalContentAlignment": "Center",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "🏭 Production Alert",
+          "weight": "Bolder",
+          "size": "ExtraLarge",
+          "color": "Light",
+          "horizontalAlignment": "Center",
+          "spacing": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Production Continuity",
+          "weight": "Bolder",
+          "size": "Large",
+          "color": "Light",
+          "horizontalAlignment": "Center",
+          "spacing": "Small"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Global Manufacturing | Delivery Risk Monitor",
+          "isSubtle": true,
+          "color": "Light",
+          "horizontalAlignment": "Center",
+          "spacing": "Small"
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "spacing": "Medium",
+      "items": [
+        {
+          "type": "FactSet",
+          "facts": [
+            {
+              "title": "Location:",
+              "value": "Plant A - Final Assembly Line 3"
+            },
+            {
+              "title": "Status:",
+              "value": "⛔ Down"
+            },
+            {
+              "title": "Time:",
+              "value": "{{DATE(2026-04-22T14:23:00Z, SHORT)}}"
+            },
+            {
+              "title": "Source:",
+              "value": "Manufacturing Execution System Alert"
+            }
+          ]
+        },
+        {
+          "type": "TextBlock",
+          "text": "**Operational Summary:**",
+          "weight": "Bolder",
+          "size": "Medium",
+          "spacing": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Automated quality gate failure detected on final assembly line. Initial diagnostics indicate sensor calibration drift and tooling alignment checks are required. Estimated recovery time: 24-48 hours pending validation run completion.",
+          "wrap": true,
+          "spacing": "Small"
+        },
+        {
+          "type": "Container",
+          "style": "emphasis",
+          "spacing": "Medium",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "**Order Details:**",
+              "weight": "Bolder",
+              "size": "Medium"
+            },
+            {
+              "type": "FactSet",
+              "facts": [
+                {
+                  "title": "Customer:",
+                  "value": "Strategic Enterprise Customer"
+                },
+                {
+                  "title": "Order Value:",
+                  "value": "$18.7M"
+                },
+                {
+                  "title": "Delivery Deadline:",
+                  "value": "May 15, 2026"
+                },
+                {
+                  "title": "Units Ordered:",
+                  "value": "4,000 finished units"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "TextBlock",
+          "text": "**Impact Assessment:**",
+          "weight": "Bolder",
+          "size": "Medium",
+          "spacing": "Medium"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Final assembly line downtime is reducing outbound capacity and puts this high-priority order at risk of a late shipment if recovery extends beyond the current estimate.",
+          "wrap": true,
+          "spacing": "Small"
+        },
+        {
+          "type": "Container",
+          "style": "emphasis",
+          "spacing": "Medium",
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "⚠️ **Order at Risk:** Priority Customer Delivery",
+              "weight": "Bolder",
+              "wrap": true,
+              "color": "Default"
+            },
+            {
+              "type": "TextBlock",
+              "text": "Estimated delay may trigger contractual penalties and downstream fulfillment impacts.",
+              "wrap": true,
+              "spacing": "Small",
+              "color": "Default"
+            }
+          ]
+        },
+        {
+          "type": "TextBlock",
+          "text": "**Recommended Actions:**",
+          "weight": "Bolder",
+          "size": "Medium",
+          "spacing": "Medium"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "📞 Engage Maintenance Lead",
+      "style": "positive",
+      "data": {
+        "action": "contact_maintenance",
+        "line": "Final Assembly Line 3",
+        "urgency": "critical"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "📊 View Throughput Impact",
+      "data": {
+        "action": "view_impact_analysis",
+        "order": "priority_order_2026_q2",
+        "line": "Final Assembly Line 3"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "🔄 Rebalance Production",
+      "data": {
+        "action": "alternative_production",
+        "product": "finished_units",
+        "order": "priority_order_2026_q2"
+      }
+    },
+    {
+      "type": "Action.Submit",
+      "title": "📧 Notify Account Team",
+      "data": {
+        "action": "notify_customer_success_team",
+        "customer": "Strategic Enterprise Customer",
+        "issue": "production_delay"
+      }
+    },
+    {
+      "type": "Action.OpenUrl",
+      "title": "🔍 View Incident Details",
+      "url": "https://mes.example.com/incidents/final-assembly-line-3"
+    }
+  ]
+}

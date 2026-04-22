@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Console: interactive chat",
+      "name": "Workflow: Console (run-console)",
       "type": "debugpy",
       "request": "launch",
       "module": "langgraph_fabric_console.main",
@@ -12,7 +12,7 @@
       "justMyCode": true
     },
     {
-      "name": "API: FastAPI (uvicorn)",
+      "name": "Workflow: API (run-api)",
       "type": "debugpy",
       "request": "launch",
       "module": "langgraph_fabric_api.main",
@@ -22,7 +22,7 @@
       "justMyCode": true
     },
     {
-      "name": "Hosted: M365 adapter",
+      "name": "Workflow: M365 (run-m365)",
       "type": "debugpy",
       "request": "launch",
       "module": "langgraph_fabric_m365.main",
@@ -98,17 +98,17 @@
   ],
   "compounds": [
     {
-      "name": "API + M365 adapter",
+      "name": "Workflow: API + M365",
       "configurations": [
-        "API: FastAPI (uvicorn)",
-        "Hosted: M365 adapter"
+        "Workflow: API (run-api)",
+        "Workflow: M365 (run-m365)"
       ]
     },
     {
-      "name": "API + Console",
+      "name": "Workflow: API + Console",
       "configurations": [
-        "API: FastAPI (uvicorn)",
-        "Console: interactive chat"
+        "Workflow: API (run-api)",
+        "Workflow: Console (run-console)"
       ]
     }
   ]

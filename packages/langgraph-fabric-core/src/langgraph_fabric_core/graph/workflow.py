@@ -1,11 +1,14 @@
 """LangGraph definition for the MCP-enabled agent."""
 
+import logging
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(TypedDict):
@@ -22,7 +25,9 @@ def build_graph(chat_model, tools):
     tool_calling_llm = chat_model.bind_tools(tools) if tools else chat_model
 
     async def assistant(state: AgentState):
+        logger.info("LLM request: %s", state["messages"])
         response = await tool_calling_llm.ainvoke(state["messages"])
+        logger.info("LLM response: %s", response)
         return {"messages": [response]}
 
     async def finalize(state: AgentState):
@@ -44,7 +49,9 @@ def build_graph(chat_model, tools):
             f"MCP tool result:\n{'\n\n'.join(tool_outputs).strip()}"
         )
 
+        logger.info("LLM request (finalize): %s", synthesized_prompt)
         response = await chat_model.ainvoke([HumanMessage(content=synthesized_prompt)])
+        logger.info("LLM response (finalize): %s", response)
         return {"messages": [response]}
 
     workflow = StateGraph(AgentState)

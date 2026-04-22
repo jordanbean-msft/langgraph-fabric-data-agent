@@ -139,4 +139,7 @@ class AgentOrchestrator:
             elif event_name == "on_tool_end":
                 tool_name = event.get("name", "mcp_tool")
                 tool_label = self._tool_display_label(tool_name)
+                tool_output = event.get("data", {}).get("output")
+                if tool_output:
+                    logger.info("Tool %s output: %s", tool_name, tool_output)
                 yield f"\n[tool] {tool_label} response received.\n"

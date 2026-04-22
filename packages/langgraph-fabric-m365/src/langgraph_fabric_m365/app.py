@@ -1,6 +1,9 @@
 """M365 Agents SDK adapter bridge for Teams and Copilot Chat."""
 
+import asyncio
+import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import (
@@ -12,12 +15,15 @@ from langchain_core.messages import (
 )
 from langgraph_fabric_core.graph.orchestrator import AgentOrchestrator
 from microsoft_agents.activity import (
+    ActionTypes,
     Activity,
     ActivityTypes,
+    CardAction,
     ClientCitation,
     ClientCitationAppearance,
     ClientCitationIconName,
     ClientCitationImage,
+    SuggestedActions,
 )
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import CloudAdapter
@@ -46,7 +52,28 @@ from langgraph_fabric_m365.runtime import (
 )
 
 HISTORY_KEY = "history"
+STREAM_HEARTBEAT_INTERVAL_SECONDS = 12
+STREAM_HEARTBEAT_MESSAGE = "Still working on your request..."
+SUGGESTED_ACTIONS = [
+    "Show me the top 10 customers by revenue",
+    "What products are running low on inventory?",
+    "Summarize this month's sales performance",
+]
 logger = logging.getLogger(__name__)
+
+_CARD_COMMAND = "/card"
+_ACTION_CARD_PATH = Path(__file__).parents[2] / "examples" / "action-card.json"
+
+
+def _load_action_card_payload() -> dict[str, object]:
+    """Load the sample adaptive card payload from disk."""
+    with _ACTION_CARD_PATH.open(encoding="utf-8") as action_card_file:
+        payload = json.load(action_card_file)
+
+    if not isinstance(payload, dict):
+        raise RuntimeError("Adaptive card payload must be a JSON object")
+
+    return payload
 
 
 def _build_citation_marker_text(citation_count: int) -> str:
@@ -108,6 +135,41 @@ def _set_streamer_citations(streamer: Any, citations: list[ClientCitation]) -> N
         streamer.set_citations(simplified_citations)
 
 
+def _build_suggested_actions() -> SuggestedActions:
+    """Build Teams/Copilot Chat suggested follow-up actions."""
+    return SuggestedActions(
+        to=[],
+        actions=[
+            CardAction(type=ActionTypes.im_back, title=text, value=text)
+            for text in SUGGESTED_ACTIONS
+        ],
+    )
+
+
+def _set_streamer_suggested_actions(streamer: Any, suggested_actions: SuggestedActions) -> None:
+    """Inject suggested_actions into the streamer's final activity.
+
+    Wraps the internal _queue_activity method to add suggested_actions to the
+    final message activity when the stream ends. Falls back to storing the
+    value directly on the streamer for test doubles.
+    """
+    queue_activity = getattr(streamer, "_queue_activity", None)
+    if queue_activity is None:
+        vars(streamer)["_suggested_actions"] = suggested_actions
+        return
+
+    def injecting_queue_activity(factory: Any) -> None:
+        def wrapped_factory() -> Any:
+            activity = factory()
+            if activity is not None and getattr(activity, "type", None) == "message":
+                activity.suggested_actions = suggested_actions
+            return activity
+
+        queue_activity(wrapped_factory)
+
+    streamer._queue_activity = injecting_queue_activity
+
+
 async def create_m365_app(
     settings: M365Settings,
     orchestrator: AgentOrchestrator,
@@ -137,12 +199,26 @@ async def create_m365_app(
     @agent_app.activity("message")
     async def handle_message(context, state: TurnState):
         text = getattr(context.activity, "text", "")
+        normalized_text = text.strip().lower()
         user_id = getattr(getattr(context.activity, "from_property", None), "id", "m365-user")
         channel_id = getattr(context.activity, "channel_id", None)
         magic_code = extract_magic_code(text)
         servers_requiring_oauth = [
             server for server in settings.mcp_servers if server.oauth_connection_name
         ]
+
+        if normalized_text == _CARD_COMMAND:
+            card_activity_payload = {
+                "type": ActivityTypes.message,
+                "attachments": [
+                    {
+                        "contentType": "application/vnd.microsoft.card.adaptive",
+                        "content": _load_action_card_payload(),
+                    }
+                ],
+            }
+            await context.send_activity(Activity.model_validate(card_activity_payload))
+            return
 
         if not magic_code and text.strip():
             state_set(state, PENDING_PROMPT_KEY, text)
@@ -225,24 +301,42 @@ async def create_m365_app(
         # Keep the stream open with informative updates while tools execute.
         streamer.queue_informative_update("Working on your request...")
 
-        async for chunk in orchestrator.stream(
-            prompt=prompt,
-            channel="m365",
-            auth_mode="m365",
-            user_id=user_id,
-            mcp_user_tokens=mcp_user_tokens,
-            history=history,
-            event_callback=record_tool_event,
-        ):
-            if chunk.startswith("\n[tool]"):
-                status_text = chunk.strip()
-                if status_text.startswith("[tool]"):
-                    status_text = status_text[len("[tool]") :].strip()
-                if status_text:
-                    streamer.queue_informative_update(status_text)
-            else:
-                chunks.append(chunk)
-                streamer.queue_text_chunk(chunk)
+        stop_heartbeat = asyncio.Event()
+
+        async def send_stream_heartbeat() -> None:
+            while not stop_heartbeat.is_set():
+                try:
+                    await asyncio.wait_for(
+                        stop_heartbeat.wait(),
+                        timeout=STREAM_HEARTBEAT_INTERVAL_SECONDS,
+                    )
+                except TimeoutError:
+                    streamer.queue_informative_update(STREAM_HEARTBEAT_MESSAGE)
+
+        heartbeat_task = asyncio.create_task(send_stream_heartbeat())
+
+        try:
+            async for chunk in orchestrator.stream(
+                prompt=prompt,
+                channel="m365",
+                auth_mode="m365",
+                user_id=user_id,
+                mcp_user_tokens=mcp_user_tokens,
+                history=history,
+                event_callback=record_tool_event,
+            ):
+                if chunk.startswith("\n[tool]"):
+                    status_text = chunk.strip()
+                    if status_text.startswith("[tool]"):
+                        status_text = status_text[len("[tool]") :].strip()
+                    if status_text:
+                        streamer.queue_informative_update(status_text)
+                else:
+                    chunks.append(chunk)
+                    streamer.queue_text_chunk(chunk)
+        finally:
+            stop_heartbeat.set()
+            await heartbeat_task
 
         citations = _build_client_citations(used_tool_names, orchestrator)
         if citations:
@@ -256,6 +350,7 @@ async def create_m365_app(
             )
             _set_streamer_citations(streamer, citations)
 
+        _set_streamer_suggested_actions(streamer, _build_suggested_actions())
         await streamer.end_stream()
 
         response = "".join(chunks)
