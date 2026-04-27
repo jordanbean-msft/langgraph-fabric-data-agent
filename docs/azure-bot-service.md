@@ -188,6 +188,33 @@ Before uploading the package, copy [packages/langgraph-fabric-m365/appPackage/ma
 - `bots[0].botId`
 - `copilotAgents.customEngineAgents[0].id`
 
+### Manifest field reference
+
+The following fields in `manifest.json` require updates. Each field has a specific purpose and identifier type:
+
+| Field | Type | Value | Purpose | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | GUID | Microsoft 365 app ID | Unique identifier for this Microsoft 365 app package. This ID must be unique across all installed apps in your tenant. | Generate a new GUID for official publishing to avoid collisions with sideloaded versions. When regenerating for official publish, also update `bots[0].botId`, `copilotAgents.customEngineAgents[0].id`, and `webApplicationInfo.id`. |
+| `bots[0].botId` | GUID | Bot Entra app Application (client) ID | Matches the Azure Entra application (client) ID of your bot resource. This connects the package to the bot registration in Azure. | Must match `$BOT_APP_ID` from your bot setup. Same value appears in `webApplicationInfo.id` and `webApplicationInfo.resource`. |
+| `copilotAgents.customEngineAgents[0].id` | GUID | Custom agent ID | Identifies the custom engine agent in Microsoft 365's agent registry. This is the agent ID that M365 Copilot and Teams use to route messages. | Generate a new GUID when publishing officially to prevent message routing conflicts between sideloaded and officially published versions. |
+| `webApplicationInfo.id` | GUID | Web app ID | Same value as `bots[0].botId`. Used by Teams to identify the web application backing the bot. | Must match the bot Entra app ID. |
+| `webApplicationInfo.resource` | String | Resource URI | Constructed as `api://botid-{botId}` where `{botId}` is replaced with the actual bot client ID. Identifies the API resource for OAuth token exchange. | Update automatically when you change `bots[0].botId`. |
+| `developer.websiteUrl` | URL | Your website URL | Public URL to your organization's website for bot metadata. | Use your public hostname or organization domain (e.g., `https://example.azurewebsites.net`). |
+| `developer.privacyUrl` | URL | Privacy policy URL | Public URL to your privacy policy. | Same base domain as `websiteUrl`. |
+| `developer.termsOfUseUrl` | URL | Terms of use URL | Public URL to your terms of use. | Same base domain as `websiteUrl`. |
+| `validDomains` | String array | Allowed domains | List of domains that the app can load content from. Must include the domain of the bot endpoint. | Use the public hostname of your bot (e.g., `example.azurewebsites.net`). If using devtunnel, use the tunnel hostname. |
+
+### IDs and regeneration for official publishing
+
+When moving from sideloaded testing to official publishing through Microsoft 365 admin center:
+
+1. **Generate new `id` and `copilotAgents.customEngineAgents[0].id`** — Both should be new GUIDs.
+2. **Optionally regenerate `bots[0].botId`** — If you want a separate bot registration for production; otherwise reuse the same Entra app ID.
+3. **Update all dependent fields** — Ensure `webApplicationInfo.id` and `webApplicationInfo.resource` match the new `bots[0].botId`.
+4. **Rebuild the package** — Create a new ZIP file with the updated manifest.
+
+Regenerating IDs prevents Microsoft 365 from treating the sideloaded and officially published agents as the same app, which could cause message routing or deployment conflicts.
+
 Build the package after updating the manifest (run from the repo root):
 
 ```bash

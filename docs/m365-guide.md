@@ -84,7 +84,7 @@ uv run langgraph-fabric-m365
 
 The server listens on port `8000` by default. Override it with `PORT=<number>` in `.env`.
 
-## Install in Teams
+## Install in Teams for development & testing (sideloading)
 
 1. Build the Teams app package:
 
@@ -108,6 +108,9 @@ See [azure-bot-service.md](azure-bot-service.md) for the full app package refere
 ## Official publish in Microsoft 365 admin center
 
 Use this flow when you want to publish the agent through your tenant admin process instead of sideloading only in Teams.
+
+> [!IMPORTANT]
+> Before uploading an officially published package, generate new manifest `id` and `copilotAgents.customEngineAgents[0].id` values for that package. Microsoft 365 cannot host two different agents that share the same identifiers, even when one is sideloaded and the other is officially published. Reusing identifiers can prevent Microsoft 365 from routing messages to the intended custom engine agent. See [manifest field reference in azure-bot-service.md](azure-bot-service.md#manifest-field-reference) for detailed explanations of which fields to update and why.
 
 1. Build or download the agent ZIP package for publishing.
 2. For this sample, use `packages/langgraph-fabric-m365/appPackage/build/langgraph-fabric-data-agent-m365.zip`.

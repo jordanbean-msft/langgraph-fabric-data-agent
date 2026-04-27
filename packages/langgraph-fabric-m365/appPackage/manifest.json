@@ -50,5 +50,9 @@
     }
   ],
   "permissions": ["identity", "messageTeamMembers"],
-  "validDomains": ["example.azurewebsites.net"]
+  "validDomains": ["example.azurewebsites.net"],
+  "webApplicationInfo": {
+    "id": "",
+    "resource": "api://botid-{botId}"
+  }
 }
