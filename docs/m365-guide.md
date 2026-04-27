@@ -4,7 +4,7 @@ description: How to set up and run the LangGraph MCP sample in Microsoft Teams a
 ms.date: 2026-04-01
 ---
 
-# Teams and Copilot Chat Guide
+## Teams and Copilot Chat Guide
 
 The `langgraph-fabric-m365` package is an M365 adapter that bridges the LangGraph agent to Microsoft Teams and Microsoft 365 Copilot Chat. It uses the M365 Agents SDK to handle Bot Framework messaging, validates the incoming Teams/Copilot JWT at the `/api/messages` endpoint, and uses Azure Bot Service OAuth connections for MCP-backed tools when needed.
 
@@ -72,7 +72,7 @@ Copy the HTTPS tunnel URL (e.g., `https://<tunnel-id>.devtunnels.ms`).
 
 In the Azure portal, navigate to your Bot resource → **Settings → Configuration** and update the **Messaging endpoint** to:
 
-```
+```text
 https://<tunnel-id>.devtunnels.ms/api/messages
 ```
 
@@ -104,6 +104,22 @@ The server listens on port `8000` by default. Override it with `PORT=<number>` i
 3. Open the app in Teams and send a message to trigger the sign-in flow.
 
 See [azure-bot-service.md](azure-bot-service.md) for the full app package reference and channel configuration steps.
+
+## Official publish in Microsoft 365 admin center
+
+Use this flow when you want to publish the agent through your tenant admin process instead of sideloading only in Teams.
+
+1. Build or download the agent ZIP package for publishing.
+2. For this sample, use `packages/langgraph-fabric-m365/appPackage/build/langgraph-fabric-data-agent-m365.zip`.
+3. Open [Microsoft 365 admin center](https://admin.microsoft.com/).
+4. Select **Agents** > **All agents** > **Registry** > **Add agent** (you may have to click on the ellipsis button on the right-hand side of the screen to see this).
+5. Select **Choose File** and upload the ZIP file, then wait for validation to complete.
+6. Verify package metadata (name, icon, and supported host products), then select **Next**.
+7. Assign users for rollout. Start with **Just me** or a test security group for pilot validation, then expand assignment after smoke testing sign-in and tool calls.
+8. Review permissions and capabilities, then select **Next**.
+9. Select **Finish deployment** to complete publishing.
+
+After upload, manage assignment and deployment from the same agent entry in the admin center. For official lifecycle guidance, see [Upload Microsoft 365 Copilot custom agents](https://learn.microsoft.com/en-us/microsoft-365/copilot/agent-essentials/agent-lifecycle/agent-upload-agents).
 
 ## Sign-in flow walkthrough
 
